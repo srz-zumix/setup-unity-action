@@ -1,305 +1,169 @@
-# Create a GitHub Action Using TypeScript
+# Setup Unity
 
-![Linter](https://github.com/actions/typescript-action/actions/workflows/linter.yml/badge.svg)
-![CI](https://github.com/actions/typescript-action/actions/workflows/ci.yml/badge.svg)
-![Check dist/](https://github.com/actions/typescript-action/actions/workflows/check-dist.yml/badge.svg)
-![CodeQL](https://github.com/actions/typescript-action/actions/workflows/codeql-analysis.yml/badge.svg)
+![CI](https://github.com/srz-zumix/setup-unity-action/actions/workflows/ci.yml/badge.svg)
+![Check dist/](https://github.com/srz-zumix/setup-unity-action/actions/workflows/check-dist.yml/badge.svg)
 ![Coverage](./badges/coverage.svg)
 
-Use this template to bootstrap the creation of a TypeScript action. :rocket:
-
-This template includes compilation support, tests, a validation workflow,
-publishing, and versioning guidance.
-
-If you are new, there's also a simpler introduction in the
-[Hello world JavaScript action repository](https://github.com/actions/hello-world-javascript-action).
-
-## Create Your Own Action
-
-To create your own action, you can use this repository as a template! Just
-follow the below instructions:
-
-1. Click the **Use this template** button at the top of the repository
-1. Select **Create a new repository**
-1. Select an owner and name for your new repository
-1. Click **Create repository**
-1. Clone your new repository
-
-> [!IMPORTANT]
->
-> Make sure to remove or update the [`CODEOWNERS`](./CODEOWNERS) file! For
-> details on how to use this file, see
-> [About code owners](https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners).
-
-## Initial Setup
-
-After you've cloned the repository to your local machine or codespace, you'll
-need to perform some initial setup steps before you can develop your action.
-
-> [!NOTE]
->
-> You'll need to have a reasonably modern version of
-> [Node.js](https://nodejs.org) handy (20.x or later should work!). If you are
-> using a version manager like [`nodenv`](https://github.com/nodenv/nodenv) or
-> [`fnm`](https://github.com/Schniz/fnm), this template has a `.node-version`
-> file at the root of the repository that can be used to automatically switch to
-> the correct version when you `cd` into the repository. Additionally, this
-> `.node-version` file is used by GitHub Actions in any `actions/setup-node`
-> actions.
-
-1. :hammer_and_wrench: Install the dependencies
-
-   ```bash
-   npm install
-   ```
-
-1. :building_construction: Package the TypeScript for distribution
-
-   ```bash
-   npm run bundle
-   ```
-
-1. :white_check_mark: Run the tests
-
-   ```bash
-   $ npm test
-
-   PASS  ./index.test.js
-     ✓ throws invalid number (3ms)
-     ✓ wait 500 ms (504ms)
-     ✓ test runs (95ms)
-
-   ...
-   ```
-
-## Update the Action Metadata
-
-The [`action.yml`](action.yml) file defines metadata about your action, such as
-input(s) and output(s). For details about this file, see
-[Metadata syntax for GitHub Actions](https://docs.github.com/en/actions/creating-actions/metadata-syntax-for-github-actions).
-
-When you copy this repository, update `action.yml` with the name, description,
-inputs, and outputs for your action.
-
-## Update the Action Code
-
-The [`src/`](./src/) directory is the heart of your action! This contains the
-source code that will be run when your action is invoked. You can replace the
-contents of this directory with your own code.
-
-There are a few things to keep in mind when writing your action code:
-
-- Most GitHub Actions toolkit and CI/CD operations are processed asynchronously.
-  In `main.ts`, you will see that the action is run in an `async` function.
-
-  ```javascript
-  import * as core from '@actions/core'
-  //...
-
-  async function run() {
-    try {
-      //...
-    } catch (error) {
-      core.setFailed(error.message)
-    }
-  }
-  ```
-
-  For more information about the GitHub Actions toolkit, see the
-  [documentation](https://github.com/actions/toolkit/blob/main/README.md).
-
-So, what are you waiting for? Go ahead and start customizing your action!
-
-1. Create a new branch
-
-   ```bash
-   git checkout -b releases/v1
-   ```
-
-1. Replace the contents of `src/` with your action code
-1. Add tests to `__tests__/` for your source code
-1. Format, test, and build the action
-
-   ```bash
-   npm run all
-   ```
-
-   > This step is important! It will run [`rollup`](https://rollupjs.org/) to
-   > build the final JavaScript action code with all dependencies included. If
-   > you do not run this step, your action will not work correctly when it is
-   > used in a workflow.
-
-1. (Optional) Test your action locally
-
-   The [`@github/local-action`](https://github.com/github/local-action) utility
-   can be used to test your action locally. It is a simple command-line tool
-   that "stubs" (or simulates) the GitHub Actions Toolkit. This way, you can run
-   your TypeScript action locally without having to commit and push your changes
-   to a repository.
-
-   The `local-action` utility can be run in the following ways:
-   - Visual Studio Code Debugger
-
-     Make sure to review and, if needed, update
-     [`.vscode/launch.json`](./.vscode/launch.json)
-
-   - Terminal/Command Prompt
-
-     ```bash
-     # npx @github/local action <action-yaml-path> <entrypoint> <dotenv-file>
-     npx @github/local-action . src/main.ts .env
-     ```
-
-   You can provide a `.env` file to the `local-action` CLI to set environment
-   variables used by the GitHub Actions Toolkit. For example, setting inputs and
-   event payload data used by your action. For more information, see the example
-   file, [`.env.example`](./.env.example), and the
-   [GitHub Actions Documentation](https://docs.github.com/en/actions/learn-github-actions/variables#default-environment-variables).
-
-1. Commit your changes
-
-   ```bash
-   git add .
-   git commit -m "My first action is ready!"
-   ```
-
-1. Push them to your repository
-
-   ```bash
-   git push -u origin releases/v1
-   ```
-
-1. Create a pull request and get feedback on your action
-1. Merge the pull request into the `main` branch
-
-Your action is now published! :rocket:
-
-For information about versioning your action, see
-[Versioning](https://github.com/actions/toolkit/blob/main/docs/action-versioning.md)
-in the GitHub Actions toolkit.
-
-## Validate the Action
-
-You can now validate the action by referencing it in a workflow file. For
-example, [`ci.yml`](./.github/workflows/ci.yml) demonstrates how to reference an
-action in the same repository.
-
-```yaml
-steps:
-  - name: Checkout
-    id: checkout
-    uses: actions/checkout@v4
-
-  - name: Test Local Action
-    id: test-action
-    uses: ./
-    with:
-      milliseconds: 1000
-
-  - name: Print Output
-    id: output
-    run: echo "${{ steps.test-action.outputs.time }}"
-```
-
-For example workflow runs, check out the
-[Actions tab](https://github.com/actions/typescript-action/actions)! :rocket:
+Install the Unity Editor and modules on **macOS, Windows and Linux** using the
+official standalone [Unity CLI](https://docs.unity.com/en-us/unity-cli). This
+action uses `unity install`, not Unity Hub's legacy headless interface.
 
 ## Usage
 
-After testing, you can create version tag(s) that developers can use to
-reference different stable versions of your action. For more information, see
-[Versioning](https://github.com/actions/toolkit/blob/main/docs/action-versioning.md)
-in the GitHub Actions toolkit.
+```yaml
+jobs:
+  unity:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v6
+      - name: Install Unity
+        uses: srz-zumix/setup-unity-action@main
+        with:
+          version: 6000.0.47f1
+          accept-eula: 'true'
+      - name: Show installed Editors
+        run: unity editors --installed
+```
 
-To include the action in a workflow in another repository, you can use the
-`uses` syntax with the `@` symbol to reference a specific branch, tag, or commit
-hash.
+Pin the action to a commit SHA for reproducible workflows. `version` selects the
+**Editor**, while `cli-version` selects the standalone CLI. The CLI is added to
+`PATH` for subsequent steps; the Editor executable is not.
+
+### Install modules
 
 ```yaml
-steps:
-  - name: Checkout
-    id: checkout
-    uses: actions/checkout@v4
-
-  - name: Test Local Action
-    id: test-action
-    uses: actions/typescript-action@v1 # Commit with the `v1` tag
-    with:
-      milliseconds: 1000
-
-  - name: Print Output
-    id: output
-    run: echo "${{ steps.test-action.outputs.time }}"
+- uses: srz-zumix/setup-unity-action@main
+  with:
+    version: 6000.0.47f1
+    module: |
+      android
+      webgl
+    child-modules: 'true'
+    accept-eula: 'true'
+    install-path: ${{ runner.temp }}/Unity Editors
 ```
 
-## Publishing a New Release
+`module` also accepts whitespace- or comma-separated IDs. Each ID is passed as a
+separate `--module` argument. Availability depends on the Editor release and OS.
 
-This project includes a helper script, [`script/release`](./script/release)
-designed to streamline the process of tagging and pushing new releases for
-GitHub Actions.
+### Preview or list modules
 
-GitHub Actions allows users to select a specific version of the action to use,
-based on release tags. This script simplifies this process by performing the
-following steps:
+```yaml
+- uses: srz-zumix/setup-unity-action@main
+  with:
+    version: 6000.0.47f1
+    module: android
+    dry-run: 'true'
+    format: json
+```
 
-1. **Retrieving the latest release tag:** The script starts by fetching the most
-   recent SemVer release tag of the current branch, by looking at the local data
-   available in your repository.
-1. **Prompting for a new release tag:** The user is then prompted to enter a new
-   release tag. To assist with this, the script displays the tag retrieved in
-   the previous step, and validates the format of the inputted tag (vX.X.X). The
-   user is also reminded to update the version field in package.json.
-1. **Tagging the new release:** The script then tags a new release and syncs the
-   separate major tag (e.g. v1, v2) with the new release tag (e.g. v1.0.0,
-   v2.1.2). When the user is creating a new major release, the script
-   auto-detects this and creates a `releases/v#` branch for the previous major
-   version.
-1. **Pushing changes to remote:** Finally, the script pushes the necessary
-   commits, tags and branches to the remote repository. From here, you will need
-   to create a new release in GitHub so users can easily reference the new tags
-   in their workflows.
+Use `list-modules: 'true'` to list modules instead. Neither mode installs an
+Editor, but both still download and set up the CLI.
 
-## Dependency License Management
+## Inputs
 
-This template includes a GitHub Actions workflow,
-[`licensed.yml`](./.github/workflows/licensed.yml), that uses
-[Licensed](https://github.com/licensee/licensed) to check for dependencies with
-missing or non-compliant licenses. This workflow is initially disabled. To
-enable the workflow, follow the below steps.
+The canonical `unity install` options are mapped directly to inputs. `version`
+is required to avoid interactive version selection. All other inputs are
+optional. Boolean inputs accept YAML `true` / `false` spellings; quote them in
+workflows.
 
-1. Open [`licensed.yml`](./.github/workflows/licensed.yml)
-1. Uncomment the following lines:
+| Input              | CLI argument / behavior                                                         | Default                               |
+| ------------------ | ------------------------------------------------------------------------------- | ------------------------------------- |
+| `version`          | Positional Editor version or selector, such as `6000.0.47f1`, `lts` or `latest` | Required                              |
+| `architecture`     | `--architecture`: `x86_64` or `arm64` for the Editor                            | CLI default                           |
+| `changeset`        | `--changeset`: archive changeset hash                                           | Unset                                 |
+| `module`           | Repeated `--module` arguments                                                   | Unset                                 |
+| `child-modules`    | `--child-modules`: include child modules                                        | `false`                               |
+| `no-child-modules` | `--no-child-modules`: exclude child modules                                     | `false`                               |
+| `force`            | `--force`: reinstall an existing Editor                                         | `false`                               |
+| `yes`              | `--yes`: select the first matching version without prompting                    | `true`                                |
+| `accept-eula`      | `--accept-eula`: accept module license agreements                               | `false`                               |
+| `dry-run`          | `--dry-run`: preview without installing                                         | `false`                               |
+| `resume`           | `--resume`: resume cached downloads                                             | `false`                               |
+| `no-elevate`       | `--no-elevate`: skip the Windows elevated install helper                        | `false`                               |
+| `list-modules`     | `--list-modules`: list modules and exit                                         | `false`                               |
+| `format`           | `--format`: `human`, `json`, `tsv`, `ndjson` or `github`                        | `human`                               |
+| `install-path`     | Set the Editor root with `unity install-path --set` before installing           | CLI default                           |
+| `cli-version`      | Exact CLI version to download                                                   | `1.0.0-beta.9`                        |
+| `cli-sha256`       | SHA-256 of the runner-specific CLI binary                                       | Built-in checksum for the default CLI |
 
-   ```yaml
-   # pull_request:
-   #   branches:
-   #     - main
-   # push:
-   #   branches:
-   #     - main
-   ```
+- The action always adds `--non-interactive` and `--no-banner`. With
+  `yes: 'false'`, commands requiring a choice may fail rather than prompt.
+- `child-modules` and `no-child-modules` cannot both be true. When both are
+  false, neither flag is sent, preserving the CLI's default behavior.
+- The current CLI retains older aliases such as `--cm` and `--list-components`;
+  use the canonical action inputs `child-modules` and `list-modules`.
+- `install-path` is a root directory, not an Editor executable. Relative paths
+  resolve from the working directory. Setting it updates the CLI's persistent
+  configuration, including during a dry run; take care on shared self-hosted
+  runners.
+- CLI failures, including partial module-installation failures, fail the action.
 
-1. Save and commit the changes
+## Outputs
 
-Once complete, this workflow will run any time a pull request is created or
-changes pushed directly to `main`. If the workflow detects any dependencies with
-missing or non-compliant licenses, it will fail the workflow and provide details
-on the issue(s) found.
+| Output        | Description                                                  |
+| ------------- | ------------------------------------------------------------ |
+| `cli-path`    | Absolute path to the CLI executable (`unity` or `unity.exe`) |
+| `cli-version` | CLI version used                                             |
 
-### Updating Licenses
+To locate an installed Editor, use `unity editors path <version>` after a
+successful installation. Outputs describe the CLI only, including in dry-run and
+list modes.
 
-Whenever you install or update dependencies, you can use the Licensed CLI to
-update the licenses database. To install Licensed, see the project's
-[Readme](https://github.com/licensee/licensed?tab=readme-ov-file#installation).
+## Platforms and licensing
 
-To update the cached licenses, run the following command:
+CLI downloads support x64 and ARM64 on macOS, Windows and Linux. The CLI binary
+is selected automatically for the **runner's** OS and architecture; the
+`architecture` input instead controls the **Editor** architecture (`x86_64`, not
+`x64`). An ARM64 CLI does not imply that every Editor release or module supports
+ARM64 on that OS.
+
+Use a runner compatible with Node.js 24 actions. Self-hosted runners also need
+the OS dependencies, disk space and installation permissions required by Unity.
+On Windows, run CI agents elevated when installers require administrator
+permissions: `no-elevate` disables the CLI helper, but cannot guarantee that an
+underlying installer will not request elevation.
+
+Set `accept-eula: 'true'` **only if you agree to the applicable module
+licenses**. `yes` is not EULA acceptance. This action does not sign in, activate
+a Unity license, build a project, or return a license. Configure licensing
+separately before launching the Editor.
+
+## CLI downloads and caching
+
+The action downloads raw executables over HTTPS from Unity's
+`public-cdn.cloud.unity3d.com` CDN, verifies SHA-256, and caches only the CLI in
+the runner tool cache. Cached binaries are checked again before use. Editor
+installations and Unity's download cache are managed by the CLI, not by an
+`actions/cache` step.
+
+The default CLI checksums are pinned from the
+[Homebrew manifest](https://github.com/Homebrew/homebrew-cask/blob/c9c6ce69ce87cfa22290d2a0351f0f76894037a3/Casks/u/unity-cli.rb)
+and
+[Scoop manifest](https://github.com/ScoopInstaller/Versions/blob/2bcdda3b7cb2d800949781b8c0e0bdfa5315e9d3/bucket/unity-cli-beta.json).
+Overriding `cli-version` requires a trusted `cli-sha256` for each runner
+platform. Custom CLI versions must support the options you select.
+
+The command mapping follows Unity's
+[official CLI reference](https://github.com/Unity-Technologies/skills/blob/645158263ad5f93296ca54444db8f2ec5dbf8c4d/skills/unity-cli/references/editors-install.md).
+
+## Development
+
+Use Node.js 24 and the existing project commands:
 
 ```bash
-licensed cache
+npm ci
+npm run all
 ```
 
-To check the status of cached licenses, run the following command:
+Unit tests cover option mapping, platform selection, checksum verification,
+caching and failure propagation. CI runs the unit tests and the bundled action's
+dry-run smoke test on macOS, Windows and Linux. Smoke tests do not verify a full
+Editor installation or license activation.
 
-```bash
-licensed status
-```
+After changing `src/`, run `npm run bundle` and commit the generated `dist/`
+files. For local debugging, copy `.env.example` to `.env` and run
+`npm run local-action`; the example defaults to a dry run.
