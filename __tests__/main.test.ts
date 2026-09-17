@@ -69,6 +69,18 @@ describe('main.ts', () => {
     expect(execMock).toHaveBeenNthCalledWith(2, cliPath, args)
   })
 
+  it('Ignores a blank installation root after trimming whitespace', async () => {
+    core.getInput.mockImplementation((name) =>
+      name === 'install-path' ? '   ' : ''
+    )
+
+    await run()
+
+    expect(mkdirMock).not.toHaveBeenCalled()
+    expect(execMock).toHaveBeenCalledTimes(1)
+    expect(execMock).toHaveBeenCalledWith(cliPath, args)
+  })
+
   it('Forwards custom CLI version and checksum inputs', async () => {
     core.getInput.mockImplementation(
       (name) =>

@@ -33473,7 +33473,7 @@ async function run() {
         const args = getInstallArgs();
         const cliVersion = getInput('cli-version') || DEFAULT_CLI_VERSION;
         const cliPath = await setupUnityCli(cliVersion, getInput('cli-sha256'));
-        const installPath = getInput('install-path');
+        const installPath = getInput('install-path').trim();
         if (installPath) {
             const resolvedInstallPath = path$1.resolve(installPath);
             await mkdir$1(resolvedInstallPath, { recursive: true });

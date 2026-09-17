@@ -15,7 +15,7 @@ export async function run(): Promise<void> {
     const args = getInstallArgs()
     const cliVersion = core.getInput('cli-version') || DEFAULT_CLI_VERSION
     const cliPath = await setupUnityCli(cliVersion, core.getInput('cli-sha256'))
-    const installPath = core.getInput('install-path')
+    const installPath = core.getInput('install-path').trim()
     if (installPath) {
       const resolvedInstallPath = path.resolve(installPath)
       await mkdir(resolvedInstallPath, { recursive: true })
