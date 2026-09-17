@@ -36,11 +36,11 @@ import require$$1$5 from 'node:dns';
 import require$$5$3 from 'string_decoder';
 import * as child from 'child_process';
 import { setTimeout as setTimeout$1 } from 'timers';
+import { chmod as chmod$1, mkdir as mkdir$1 } from 'node:fs/promises';
 import * as path$1 from 'node:path';
 import * as stream from 'stream';
 import { createHash } from 'node:crypto';
 import { createReadStream } from 'node:fs';
-import { chmod as chmod$1 } from 'node:fs/promises';
 import { pipeline } from 'node:stream/promises';
 
 // We use any as a valid input type
@@ -33475,10 +33475,12 @@ async function run() {
         const command = `"${cliPath}"`;
         const installPath = getInput('install-path');
         if (installPath) {
+            const resolvedInstallPath = path$1.resolve(installPath);
+            await mkdir$1(resolvedInstallPath, { recursive: true });
             await exec(command, [
                 'install-path',
                 '--set',
-                path$1.resolve(installPath),
+                resolvedInstallPath,
                 '--non-interactive',
                 '--no-banner'
             ]);

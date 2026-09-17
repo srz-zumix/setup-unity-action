@@ -1,15 +1,18 @@
 import type * as exec from '@actions/exec'
 import { jest } from '@jest/globals'
+import { mkdir as fsMkdir } from 'node:fs/promises'
 import * as path from 'node:path'
 import * as core from '../__fixtures__/core.js'
 
 const execMock = jest.fn<typeof exec.exec>()
+const mkdirMock = jest.fn<typeof fsMkdir>()
 const setupUnityCli =
   jest.fn<(version: string, hash: string) => Promise<string>>()
 const getInstallArgs = jest.fn<() => string[]>()
 
 jest.unstable_mockModule('@actions/core', () => core)
 jest.unstable_mockModule('@actions/exec', () => ({ exec: execMock }))
+jest.unstable_mockModule('node:fs/promises', () => ({ mkdir: mkdirMock }))
 jest.unstable_mockModule('../src/inputs.js', () => ({ getInstallArgs }))
 jest.unstable_mockModule('../src/unity-cli.js', () => ({
   DEFAULT_CLI_VERSION: '1.0.0-beta.9',
@@ -25,6 +28,7 @@ describe('main.ts', () => {
   beforeEach(() => {
     core.getInput.mockReturnValue('')
     getInstallArgs.mockReturnValue(args)
+    mkdirMock.mockResolvedValue(undefined)
     setupUnityCli.mockResolvedValue(cliPath)
     execMock.mockResolvedValue(0)
   })
@@ -51,6 +55,10 @@ describe('main.ts', () => {
 
     await run()
 
+    expect(mkdirMock).toHaveBeenCalledWith(
+      path.resolve('Unity Editors; echo not-a-command'),
+      { recursive: true }
+    )
     expect(execMock).toHaveBeenNthCalledWith(1, `"${cliPath}"`, [
       'install-path',
       '--set',
@@ -104,6 +112,18 @@ describe('main.ts', () => {
 
     expect(core.setFailed).toHaveBeenCalledWith('Cannot set install path')
     expect(execMock).toHaveBeenCalledTimes(1)
+    expect(core.setOutput).not.toHaveBeenCalled()
+  })
+
+  it('Fails if creating the installation root fails', async () => {
+    core.getInput.mockImplementation((name) =>
+      name === 'install-path' ? '/editors' : ''
+    )
+    mkdirMock.mockRejectedValue(new Error('Cannot create install path'))
+    await run()
+
+    expect(core.setFailed).toHaveBeenCalledWith('Cannot create install path')
+    expect(execMock).not.toHaveBeenCalled()
     expect(core.setOutput).not.toHaveBeenCalled()
   })
 

@@ -1,5 +1,6 @@
 import * as core from '@actions/core'
 import * as exec from '@actions/exec'
+import { mkdir } from 'node:fs/promises'
 import * as path from 'node:path'
 import { getInstallArgs } from './inputs.js'
 import { DEFAULT_CLI_VERSION, setupUnityCli } from './unity-cli.js'
@@ -18,10 +19,12 @@ export async function run(): Promise<void> {
     const command = `"${cliPath}"`
     const installPath = core.getInput('install-path')
     if (installPath) {
+      const resolvedInstallPath = path.resolve(installPath)
+      await mkdir(resolvedInstallPath, { recursive: true })
       await exec.exec(command, [
         'install-path',
         '--set',
-        path.resolve(installPath),
+        resolvedInstallPath,
         '--non-interactive',
         '--no-banner'
       ])
