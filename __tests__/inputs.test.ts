@@ -63,6 +63,13 @@ describe('install inputs', () => {
     )
   })
 
+  it('Trims surrounding whitespace from architecture', () => {
+    input('architecture', ' arm64 ')
+    expect(getInstallArgs()).toEqual(
+      expect.arrayContaining(['--architecture', 'arm64'])
+    )
+  })
+
   it('Rejects the CLI binary architecture spelling for the Editor', () => {
     input('architecture', 'x64')
     expect(getInstallArgs).toThrow('architecture must be x86_64 or arm64')

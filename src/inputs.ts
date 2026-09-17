@@ -27,7 +27,7 @@ export function getInstallArgs(): string[] {
   validateValue('version', version)
   const args = ['install', version]
 
-  const architecture = core.getInput('architecture')
+  const architecture = core.getInput('architecture').trim()
   if (architecture) {
     if (!['x86_64', 'arm64'].includes(architecture)) {
       throw new Error('architecture must be x86_64 or arm64')

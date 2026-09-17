@@ -30308,7 +30308,7 @@ function getInstallArgs() {
         throw new Error('Input required and not supplied: version');
     validateValue('version', version);
     const args = ['install', version];
-    const architecture = getInput('architecture');
+    const architecture = getInput('architecture').trim();
     if (architecture) {
         if (!['x86_64', 'arm64'].includes(architecture)) {
             throw new Error('architecture must be x86_64 or arm64');
