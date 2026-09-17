@@ -22,7 +22,8 @@ function validateValue(name: string, value: string): void {
  * Convert action inputs to an argument array without invoking a shell.
  */
 export function getInstallArgs(): string[] {
-  const version = core.getInput('version', { required: true })
+  const version = core.getInput('version', { required: true }).trim()
+  if (!version) throw new Error('Input required and not supplied: version')
   validateValue('version', version)
   const args = ['install', version]
 
@@ -34,7 +35,7 @@ export function getInstallArgs(): string[] {
     args.push('--architecture', architecture)
   }
 
-  const changeset = core.getInput('changeset')
+  const changeset = core.getInput('changeset').trim()
   if (changeset) {
     validateValue('changeset', changeset)
     args.push('--changeset', changeset)

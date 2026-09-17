@@ -15,13 +15,11 @@ export async function run(): Promise<void> {
     const args = getInstallArgs()
     const cliVersion = core.getInput('cli-version') || DEFAULT_CLI_VERSION
     const cliPath = await setupUnityCli(cliVersion, core.getInput('cli-sha256'))
-    // @actions/exec parses its command string, so quote paths containing spaces.
-    const command = `"${cliPath}"`
     const installPath = core.getInput('install-path')
     if (installPath) {
       const resolvedInstallPath = path.resolve(installPath)
       await mkdir(resolvedInstallPath, { recursive: true })
-      await exec.exec(command, [
+      await exec.exec(cliPath, [
         'install-path',
         '--set',
         resolvedInstallPath,
@@ -30,7 +28,7 @@ export async function run(): Promise<void> {
       ])
     }
 
-    await exec.exec(command, args)
+    await exec.exec(cliPath, args)
     core.setOutput('cli-path', cliPath)
     core.setOutput('cli-version', cliVersion)
   } catch (error) {

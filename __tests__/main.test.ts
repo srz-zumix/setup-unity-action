@@ -42,7 +42,7 @@ describe('main.ts', () => {
 
     expect(setupUnityCli).toHaveBeenCalledWith('1.0.0-beta.9', '')
     expect(execMock).toHaveBeenCalledTimes(1)
-    expect(execMock).toHaveBeenCalledWith(`"${cliPath}"`, args)
+    expect(execMock).toHaveBeenCalledWith(cliPath, args)
     expect(core.setOutput).toHaveBeenCalledWith('cli-path', cliPath)
     expect(core.setOutput).toHaveBeenCalledWith('cli-version', '1.0.0-beta.9')
     expect(core.setFailed).not.toHaveBeenCalled()
@@ -59,14 +59,14 @@ describe('main.ts', () => {
       path.resolve('Unity Editors; echo not-a-command'),
       { recursive: true }
     )
-    expect(execMock).toHaveBeenNthCalledWith(1, `"${cliPath}"`, [
+    expect(execMock).toHaveBeenNthCalledWith(1, cliPath, [
       'install-path',
       '--set',
       path.resolve('Unity Editors; echo not-a-command'),
       '--non-interactive',
       '--no-banner'
     ])
-    expect(execMock).toHaveBeenNthCalledWith(2, `"${cliPath}"`, args)
+    expect(execMock).toHaveBeenNthCalledWith(2, cliPath, args)
   })
 
   it('Forwards custom CLI version and checksum inputs', async () => {
@@ -145,7 +145,7 @@ describe('main.ts', () => {
       await run()
 
       expect(execMock).toHaveBeenCalledTimes(1)
-      expect(execMock).toHaveBeenCalledWith(`"${cliPath}"`, [...args, flag])
+      expect(execMock).toHaveBeenCalledWith(cliPath, [...args, flag])
       expect(core.setOutput).toHaveBeenCalledWith('cli-path', cliPath)
     }
   )

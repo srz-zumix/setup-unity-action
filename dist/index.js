@@ -30303,7 +30303,9 @@ function validateValue(name, value) {
  * Convert action inputs to an argument array without invoking a shell.
  */
 function getInstallArgs() {
-    const version = getInput('version', { required: true });
+    const version = getInput('version', { required: true }).trim();
+    if (!version)
+        throw new Error('Input required and not supplied: version');
     validateValue('version', version);
     const args = ['install', version];
     const architecture = getInput('architecture');
@@ -30313,7 +30315,7 @@ function getInstallArgs() {
         }
         args.push('--architecture', architecture);
     }
-    const changeset = getInput('changeset');
+    const changeset = getInput('changeset').trim();
     if (changeset) {
         validateValue('changeset', changeset);
         args.push('--changeset', changeset);
@@ -33471,13 +33473,11 @@ async function run() {
         const args = getInstallArgs();
         const cliVersion = getInput('cli-version') || DEFAULT_CLI_VERSION;
         const cliPath = await setupUnityCli(cliVersion, getInput('cli-sha256'));
-        // @actions/exec parses its command string, so quote paths containing spaces.
-        const command = `"${cliPath}"`;
         const installPath = getInput('install-path');
         if (installPath) {
             const resolvedInstallPath = path$1.resolve(installPath);
             await mkdir$1(resolvedInstallPath, { recursive: true });
-            await exec(command, [
+            await exec(cliPath, [
                 'install-path',
                 '--set',
                 resolvedInstallPath,
@@ -33485,7 +33485,7 @@ async function run() {
                 '--no-banner'
             ]);
         }
-        await exec(command, args);
+        await exec(cliPath, args);
         setOutput('cli-path', cliPath);
         setOutput('cli-version', cliVersion);
     }

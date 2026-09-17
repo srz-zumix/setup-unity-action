@@ -35,6 +35,19 @@ describe('install inputs', () => {
     expect(getInstallArgs).toThrow('Input required and not supplied: version')
   })
 
+  it('Trims surrounding whitespace from scalar inputs', () => {
+    input('version', ' 6000.0.47f1 ')
+    input('changeset', ' abc123def456 ')
+    expect(getInstallArgs()).toEqual(
+      expect.arrayContaining([
+        'install',
+        '6000.0.47f1',
+        '--changeset',
+        'abc123def456'
+      ])
+    )
+  })
+
   it.each(['lts', 'latest', '6000.0', '6000.0.47f1'])(
     'Accepts the version selector %s',
     (version) => {
