@@ -76,3 +76,36 @@ jobs:
       - name: Verify CLI on PATH
         id: cli-version
         run: unity --version
+
+  test-install:
+    name: Unity Editor Installation Test
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    env:
+      UNITY_TEST_VERSION: 6000.0.47f1
+
+    steps:
+      - name: Checkout
+        id: checkout
+        uses: actions/checkout@v6
+
+      - name: Install Unity Editor
+        id: install
+        uses: ./
+        with:
+          version: ${{ env.UNITY_TEST_VERSION }}
+          accept-eula: 'true'
+          dry-run: 'false'
+          format: json
+          install-path: ${{ runner.temp }}/Unity Editors
+
+      - name: Verify Installed Editor Files
+        id: verify
+        shell: bash
+        run: >-
+          unity editors verify "$UNITY_TEST_VERSION" --non-interactive
+          --no-banner --format json

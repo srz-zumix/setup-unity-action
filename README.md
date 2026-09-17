@@ -162,8 +162,11 @@ npm run all
 
 Unit tests cover option mapping, platform selection, checksum verification,
 caching and failure propagation. CI runs the unit tests and the bundled action's
-dry-run smoke test on macOS, Windows and Linux. Smoke tests do not verify a full
-Editor installation or license activation.
+dry-run smoke test on macOS, Windows and Linux. A separate integration test on
+each OS installs the Editor without dry-run, then uses `unity editors verify` to
+check that the installed files are present and non-empty. It installs only the
+Editor, without requesting additional modules, and allows up to 45 minutes for
+the job. These tests do not launch the Editor or activate a license.
 
 After changing `src/`, run `npm run bundle` and commit the generated `dist/`
 files. For local debugging, copy `.env.example` to `.env` and run
