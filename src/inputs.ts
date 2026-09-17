@@ -59,7 +59,7 @@ export function getInstallArgs(): string[] {
     throw new Error('child-modules and no-child-modules are mutually exclusive')
   }
 
-  const format = core.getInput('format') || 'human'
+  const format = core.getInput('format').trim() || 'human'
   if (!['human', 'json', 'tsv', 'ndjson', 'github'].includes(format)) {
     throw new Error('format must be human, json, tsv, ndjson or github')
   }

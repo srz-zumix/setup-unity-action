@@ -30336,7 +30336,7 @@ function getInstallArgs() {
     if (args.includes('--child-modules') && args.includes('--no-child-modules')) {
         throw new Error('child-modules and no-child-modules are mutually exclusive');
     }
-    const format = getInput('format') || 'human';
+    const format = getInput('format').trim() || 'human';
     if (!['human', 'json', 'tsv', 'ndjson', 'github'].includes(format)) {
         throw new Error('format must be human, json, tsv, ndjson or github');
     }
@@ -33471,8 +33471,9 @@ async function setupUnityCli(version, sha256) {
 async function run() {
     try {
         const args = getInstallArgs();
-        const cliVersion = getInput('cli-version') || DEFAULT_CLI_VERSION;
-        const cliPath = await setupUnityCli(cliVersion, getInput('cli-sha256'));
+        const cliVersion = getInput('cli-version').trim() || DEFAULT_CLI_VERSION;
+        const cliSha256 = getInput('cli-sha256').trim();
+        const cliPath = await setupUnityCli(cliVersion, cliSha256);
         const installPath = getInput('install-path').trim();
         if (installPath) {
             const resolvedInstallPath = path$1.resolve(installPath);

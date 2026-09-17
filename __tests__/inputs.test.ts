@@ -149,6 +149,11 @@ describe('install inputs', () => {
     }
   )
 
+  it('Trims surrounding whitespace from format', () => {
+    input('format', ' json ')
+    expect(getInstallArgs().slice(-2)).toEqual(['--format', 'json'])
+  })
+
   it('Rejects invalid output formats', () => {
     input('format', 'xml')
     expect(getInstallArgs).toThrow('format must be')

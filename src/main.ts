@@ -13,8 +13,10 @@ import { DEFAULT_CLI_VERSION, setupUnityCli } from './unity-cli.js'
 export async function run(): Promise<void> {
   try {
     const args = getInstallArgs()
-    const cliVersion = core.getInput('cli-version') || DEFAULT_CLI_VERSION
-    const cliPath = await setupUnityCli(cliVersion, core.getInput('cli-sha256'))
+    const cliVersion =
+      core.getInput('cli-version').trim() || DEFAULT_CLI_VERSION
+    const cliSha256 = core.getInput('cli-sha256').trim()
+    const cliPath = await setupUnityCli(cliVersion, cliSha256)
     const installPath = core.getInput('install-path').trim()
     if (installPath) {
       const resolvedInstallPath = path.resolve(installPath)

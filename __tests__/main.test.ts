@@ -94,6 +94,20 @@ describe('main.ts', () => {
     expect(core.setOutput).toHaveBeenCalledWith('cli-version', '1.0.0-beta.10')
   })
 
+  it('Trims CLI version and checksum inputs before setup', async () => {
+    core.getInput.mockImplementation(
+      (name) =>
+        ({
+          'cli-version': ' 1.0.0-beta.10 ',
+          'cli-sha256': ` ${'a'.repeat(64)} `
+        })[name] ?? ''
+    )
+    await run()
+
+    expect(setupUnityCli).toHaveBeenCalledWith('1.0.0-beta.10', 'a'.repeat(64))
+    expect(core.setOutput).toHaveBeenCalledWith('cli-version', '1.0.0-beta.10')
+  })
+
   it('Validates installation inputs before downloading or executing anything', async () => {
     getInstallArgs.mockImplementation(() => {
       throw new Error('Invalid input')

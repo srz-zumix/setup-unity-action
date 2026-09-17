@@ -144,8 +144,9 @@ The default CLI checksums are pinned from the
 [Homebrew manifest](https://github.com/Homebrew/homebrew-cask/blob/c9c6ce69ce87cfa22290d2a0351f0f76894037a3/Casks/u/unity-cli.rb)
 and
 [Scoop manifest](https://github.com/ScoopInstaller/Versions/blob/2bcdda3b7cb2d800949781b8c0e0bdfa5315e9d3/bucket/unity-cli-beta.json).
-Overriding `cli-version` requires a trusted `cli-sha256` for each runner
-platform. Custom CLI versions must support the options you select.
+Overriding `cli-version` requires an explicit trusted `cli-sha256` for each
+runner platform; `cli-sha256` is mandatory whenever `cli-version` is changed.
+Custom CLI versions must support the options you select.
 
 The command mapping follows Unity's
 [official CLI reference](https://github.com/Unity-Technologies/skills/blob/645158263ad5f93296ca54444db8f2ec5dbf8c4d/skills/unity-cli/references/editors-install.md).
