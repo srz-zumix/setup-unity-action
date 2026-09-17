@@ -30295,7 +30295,7 @@ const booleanFlags = [
     'list-modules'
 ];
 function validateValue(name, value) {
-    if (value.startsWith('-') || /[\0\r\n]/.test(value)) {
+    if (value.startsWith('-') || /[\0\s]/.test(value)) {
         throw new Error(`Invalid ${name}: expected a value, not a CLI option`);
     }
 }

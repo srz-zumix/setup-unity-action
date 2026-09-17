@@ -136,8 +136,10 @@ describe('install inputs', () => {
 
   it.each([
     ['version', '--force'],
+    ['version', '6000.0.47f1 --force'],
     ['version', '6000.0.47f1\n--force'],
     ['changeset', '--force'],
+    ['changeset', 'abc123def456 --force'],
     ['module', 'android --force']
   ])('Rejects option injection in %s', (name, value) => {
     input(name, value)
