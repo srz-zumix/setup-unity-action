@@ -5,7 +5,7 @@ author: srz-zumix
 # Add your action's branding here. This will appear on the GitHub Marketplace.
 branding:
   icon: download
-  color: gray
+  color: blue
 
 # Define your inputs here.
 inputs:
