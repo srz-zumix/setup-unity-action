@@ -14,7 +14,11 @@ permissions:
 jobs:
   test-typescript:
     name: TypeScript Tests
-    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
 
     steps:
       - name: Checkout
@@ -46,19 +50,62 @@ jobs:
 
   test-action:
     name: GitHub Actions Test
-    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
 
     steps:
       - name: Checkout
         id: checkout
         uses: actions/checkout@v6
 
-      - name: Test Local Action
+      - name: Test Local Action (Dry Run)
         id: test-action
         uses: ./
         with:
-          milliseconds: 2000
+          version: 6000.0.47f1
+          module: android
+          child-modules: 'true'
+          dry-run: 'true'
+          format: json
+          install-path: ${{ runner.temp }}/Unity Editors
 
-      - name: Print Output
-        id: output
-        run: echo "${{ steps.test-action.outputs.time }}"
+      - name: Verify CLI on PATH
+        id: cli-version
+        run: unity --version
+
+  test-install:
+    name: Unity Editor Installation Test
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    env:
+      UNITY_TEST_VERSION: 6000.0.47f1
+
+    steps:
+      - name: Checkout
+        id: checkout
+        uses: actions/checkout@v6
+
+      - name: Install Unity Editor
+        id: install
+        uses: ./
+        with:
+          version: ${{ env.UNITY_TEST_VERSION }}
+          accept-eula: 'true'
+          dry-run: 'false'
+          format: json
+          install-path: ${{ runner.temp }}/Unity Editors
+
+      - name: Verify Installed Editor Files
+        id: verify
+        shell: bash
+        run: >-
+          unity editors verify "$UNITY_TEST_VERSION" --non-interactive
+          --no-banner --format json

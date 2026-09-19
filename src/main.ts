@@ -1,5 +1,9 @@
 import * as core from '@actions/core'
-import { wait } from './wait.js'
+import * as exec from '@actions/exec'
+import { mkdir } from 'node:fs/promises'
+import * as path from 'node:path'
+import { getInstallArgs } from './inputs.js'
+import { DEFAULT_CLI_VERSION, setupUnityCli } from './unity-cli.js'
 
 /**
  * The main function for the action.
@@ -8,20 +12,29 @@ import { wait } from './wait.js'
  */
 export async function run(): Promise<void> {
   try {
-    const ms: string = core.getInput('milliseconds')
+    const args = getInstallArgs()
+    const cliVersion =
+      core.getInput('cli-version').trim() || DEFAULT_CLI_VERSION
+    const cliSha256 = core.getInput('cli-sha256').trim()
+    const cliPath = await setupUnityCli(cliVersion, cliSha256)
+    const installPath = core.getInput('install-path').trim()
+    if (installPath) {
+      const resolvedInstallPath = path.resolve(installPath)
+      await mkdir(resolvedInstallPath, { recursive: true })
+      await exec.exec(cliPath, [
+        'install-path',
+        '--set',
+        resolvedInstallPath,
+        '--non-interactive',
+        '--no-banner'
+      ])
+    }
 
-    // Debug logs are only output if the `ACTIONS_STEP_DEBUG` secret is true
-    core.debug(`Waiting ${ms} milliseconds ...`)
-
-    // Log the current timestamp, wait, then log the new timestamp
-    core.debug(new Date().toTimeString())
-    await wait(parseInt(ms, 10))
-    core.debug(new Date().toTimeString())
-
-    // Set outputs for other workflow steps to use
-    core.setOutput('time', new Date().toTimeString())
+    await exec.exec(cliPath, args)
+    core.setOutput('cli-path', cliPath)
+    core.setOutput('cli-version', cliVersion)
   } catch (error) {
     // Fail the workflow run if an error occurs
-    if (error instanceof Error) core.setFailed(error.message)
+    core.setFailed(error instanceof Error ? error.message : String(error))
   }
 }

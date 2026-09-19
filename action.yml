@@ -1,23 +1,75 @@
-name: The name of your action here
-description: Provide a description here
-author: Your name or organization here
+name: Setup Unity
+description: Install the Unity Editor and modules using the official Unity CLI
+author: srz-zumix
 
 # Add your action's branding here. This will appear on the GitHub Marketplace.
 branding:
-  icon: heart
-  color: red
+  icon: download
+  color: blue
 
 # Define your inputs here.
 inputs:
-  milliseconds:
-    description: Your input description here
+  version:
+    description:
+      Unity Editor version or selector (for example 6000.0.47f1 or lts)
     required: true
-    default: '1000'
+  architecture:
+    description:
+      Editor architecture (x86_64 or arm64); omitted to use the CLI default
+  changeset:
+    description: Changeset hash for an archive installation
+  module:
+    description: Module IDs separated by whitespace, commas or newlines
+  child-modules:
+    description: Include child modules
+    default: 'false'
+  no-child-modules:
+    description: Exclude child modules; mutually exclusive with child-modules
+    default: 'false'
+  force:
+    description: Force reinstall even if the Editor is already installed
+    default: 'false'
+  yes:
+    description:
+      Select the first matching version without prompting (not EULA acceptance)
+    default: 'true'
+  accept-eula:
+    description:
+      Accept all module license agreements; only enable if you agree to them
+    default: 'false'
+  dry-run:
+    description:
+      Show what would be installed without installing the Editor or modules
+    default: 'false'
+  resume:
+    description: Resume interrupted downloads from the Unity download cache
+    default: 'false'
+  no-elevate:
+    description: Skip the elevated install helper on Windows
+    default: 'false'
+  list-modules:
+    description: List available modules and exit without installing the Editor
+    default: 'false'
+  format:
+    description: CLI output format (human, json, tsv, ndjson or github)
+    default: human
+  install-path:
+    description:
+      Optional Editor installation root, configured with unity install-path
+      --set
+  cli-version:
+    description: Exact Unity CLI version to download
+    default: 1.0.0-beta.9
+  cli-sha256:
+    description:
+      CLI binary SHA-256; required when overriding the bundled CLI version
 
 # Define your outputs here.
 outputs:
-  time:
-    description: Your output description here
+  cli-path:
+    description: Absolute path to the Unity CLI executable (also added to PATH)
+  cli-version:
+    description: Unity CLI version used by the action
 
 runs:
   using: node24

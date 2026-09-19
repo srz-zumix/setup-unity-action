@@ -1,62 +1,178 @@
-/**
- * Unit tests for the action's main functionality, src/main.ts
- *
- * To mock dependencies in ESM, you can create fixtures that export mock
- * functions and objects. For example, the core module is mocked in this test,
- * so that the actual '@actions/core' module is not imported.
- */
+import type * as exec from '@actions/exec'
 import { jest } from '@jest/globals'
+import { mkdir as fsMkdir } from 'node:fs/promises'
+import * as path from 'node:path'
 import * as core from '../__fixtures__/core.js'
-import { wait } from '../__fixtures__/wait.js'
 
-// Mocks should be declared before the module being tested is imported.
+const execMock = jest.fn<typeof exec.exec>()
+const mkdirMock = jest.fn<typeof fsMkdir>()
+const setupUnityCli =
+  jest.fn<(version: string, hash: string) => Promise<string>>()
+const getInstallArgs = jest.fn<() => string[]>()
+
 jest.unstable_mockModule('@actions/core', () => core)
-jest.unstable_mockModule('../src/wait.js', () => ({ wait }))
+jest.unstable_mockModule('@actions/exec', () => ({ exec: execMock }))
+jest.unstable_mockModule('node:fs/promises', () => ({ mkdir: mkdirMock }))
+jest.unstable_mockModule('../src/inputs.js', () => ({ getInstallArgs }))
+jest.unstable_mockModule('../src/unity-cli.js', () => ({
+  DEFAULT_CLI_VERSION: '1.0.0-beta.9',
+  setupUnityCli
+}))
 
-// The module being tested should be imported dynamically. This ensures that the
-// mocks are used in place of any actual dependencies.
 const { run } = await import('../src/main.js')
 
 describe('main.ts', () => {
-  beforeEach(() => {
-    // Set the action's inputs as return values from core.getInput().
-    core.getInput.mockImplementation(() => '500')
+  const cliPath = path.resolve('tool cache', 'unity')
+  const args = ['install', '6000.0.47f1', '--yes', '--non-interactive']
 
-    // Mock the wait function so that it does not actually wait.
-    wait.mockImplementation(() => Promise.resolve('done!'))
+  beforeEach(() => {
+    core.getInput.mockReturnValue('')
+    getInstallArgs.mockReturnValue(args)
+    mkdirMock.mockResolvedValue(undefined)
+    setupUnityCli.mockResolvedValue(cliPath)
+    execMock.mockResolvedValue(0)
   })
 
   afterEach(() => {
     jest.resetAllMocks()
   })
 
-  it('Sets the time output', async () => {
+  it('Installs Unity and sets CLI outputs', async () => {
     await run()
 
-    // Verify the time output was set.
-    expect(core.setOutput).toHaveBeenNthCalledWith(
-      1,
-      'time',
-      // Simple regex to match a time string in the format HH:MM:SS.
-      expect.stringMatching(/^\d{2}:\d{2}:\d{2}/)
-    )
+    expect(setupUnityCli).toHaveBeenCalledWith('1.0.0-beta.9', '')
+    expect(execMock).toHaveBeenCalledTimes(1)
+    expect(execMock).toHaveBeenCalledWith(cliPath, args)
+    expect(core.setOutput).toHaveBeenCalledWith('cli-path', cliPath)
+    expect(core.setOutput).toHaveBeenCalledWith('cli-version', '1.0.0-beta.9')
+    expect(core.setFailed).not.toHaveBeenCalled()
   })
 
-  it('Sets a failed status', async () => {
-    // Clear the getInput mock and return an invalid value.
-    core.getInput.mockClear().mockReturnValueOnce('this is not a number')
-
-    // Clear the wait mock and return a rejected promise.
-    wait
-      .mockClear()
-      .mockRejectedValueOnce(new Error('milliseconds is not a number'))
+  it('Configures an absolute installation root before installing', async () => {
+    core.getInput.mockImplementation((name) =>
+      name === 'install-path' ? 'Unity Editors; echo not-a-command' : ''
+    )
 
     await run()
 
-    // Verify that the action was marked as failed.
-    expect(core.setFailed).toHaveBeenNthCalledWith(
-      1,
-      'milliseconds is not a number'
+    expect(mkdirMock).toHaveBeenCalledWith(
+      path.resolve('Unity Editors; echo not-a-command'),
+      { recursive: true }
     )
+    expect(execMock).toHaveBeenNthCalledWith(1, cliPath, [
+      'install-path',
+      '--set',
+      path.resolve('Unity Editors; echo not-a-command'),
+      '--non-interactive',
+      '--no-banner'
+    ])
+    expect(execMock).toHaveBeenNthCalledWith(2, cliPath, args)
   })
+
+  it('Ignores a blank installation root after trimming whitespace', async () => {
+    core.getInput.mockImplementation((name) =>
+      name === 'install-path' ? '   ' : ''
+    )
+
+    await run()
+
+    expect(mkdirMock).not.toHaveBeenCalled()
+    expect(execMock).toHaveBeenCalledTimes(1)
+    expect(execMock).toHaveBeenCalledWith(cliPath, args)
+  })
+
+  it('Forwards custom CLI version and checksum inputs', async () => {
+    core.getInput.mockImplementation(
+      (name) =>
+        ({ 'cli-version': '1.0.0-beta.10', 'cli-sha256': 'a'.repeat(64) })[
+          name
+        ] ?? ''
+    )
+    await run()
+
+    expect(setupUnityCli).toHaveBeenCalledWith('1.0.0-beta.10', 'a'.repeat(64))
+    expect(core.setOutput).toHaveBeenCalledWith('cli-version', '1.0.0-beta.10')
+  })
+
+  it('Trims CLI version and checksum inputs before setup', async () => {
+    core.getInput.mockImplementation(
+      (name) =>
+        ({
+          'cli-version': ' 1.0.0-beta.10 ',
+          'cli-sha256': ` ${'a'.repeat(64)} `
+        })[name] ?? ''
+    )
+    await run()
+
+    expect(setupUnityCli).toHaveBeenCalledWith('1.0.0-beta.10', 'a'.repeat(64))
+    expect(core.setOutput).toHaveBeenCalledWith('cli-version', '1.0.0-beta.10')
+  })
+
+  it('Validates installation inputs before downloading or executing anything', async () => {
+    getInstallArgs.mockImplementation(() => {
+      throw new Error('Invalid input')
+    })
+    await run()
+
+    expect(core.setFailed).toHaveBeenCalledWith('Invalid input')
+    expect(setupUnityCli).not.toHaveBeenCalled()
+    expect(execMock).not.toHaveBeenCalled()
+    expect(core.setOutput).not.toHaveBeenCalled()
+  })
+
+  it('Fails if CLI setup fails', async () => {
+    setupUnityCli.mockRejectedValue(new Error('Download failed'))
+    await run()
+
+    expect(core.setFailed).toHaveBeenCalledWith('Download failed')
+    expect(execMock).not.toHaveBeenCalled()
+    expect(core.setOutput).not.toHaveBeenCalled()
+  })
+
+  it('Fails if setting the installation root fails', async () => {
+    core.getInput.mockImplementation((name) =>
+      name === 'install-path' ? '/editors' : ''
+    )
+    execMock.mockRejectedValue(new Error('Cannot set install path'))
+    await run()
+
+    expect(core.setFailed).toHaveBeenCalledWith('Cannot set install path')
+    expect(execMock).toHaveBeenCalledTimes(1)
+    expect(core.setOutput).not.toHaveBeenCalled()
+  })
+
+  it('Fails if creating the installation root fails', async () => {
+    core.getInput.mockImplementation((name) =>
+      name === 'install-path' ? '/editors' : ''
+    )
+    mkdirMock.mockRejectedValue(new Error('Cannot create install path'))
+    await run()
+
+    expect(core.setFailed).toHaveBeenCalledWith('Cannot create install path')
+    expect(execMock).not.toHaveBeenCalled()
+    expect(core.setOutput).not.toHaveBeenCalled()
+  })
+
+  it.each([new Error('Installation failed'), 'Installation failed'])(
+    'Reports installation failures: %s',
+    async (error) => {
+      execMock.mockRejectedValue(error)
+      await run()
+
+      expect(core.setFailed).toHaveBeenCalledWith('Installation failed')
+      expect(core.setOutput).not.toHaveBeenCalled()
+    }
+  )
+
+  it.each(['--dry-run', '--list-modules'])(
+    'Does not query an installed Editor for %s',
+    async (flag) => {
+      getInstallArgs.mockReturnValue([...args, flag])
+      await run()
+
+      expect(execMock).toHaveBeenCalledTimes(1)
+      expect(execMock).toHaveBeenCalledWith(cliPath, [...args, flag])
+      expect(core.setOutput).toHaveBeenCalledWith('cli-path', cliPath)
+    }
+  )
 })
