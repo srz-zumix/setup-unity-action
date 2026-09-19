@@ -33401,7 +33401,10 @@ function _getGlobal(key, defaultValue) {
     return value !== undefined ? value : defaultValue;
 }
 
-const DEFAULT_CLI_VERSION = '1.0.0-beta.9';
+const LATEST_CLI_VERSION = 'latest';
+/** CLI version whose binary checksums are pinned below. */
+const PINNED_CLI_VERSION = '1.0.0-beta.9';
+const DEFAULT_CLI_VERSION = LATEST_CLI_VERSION;
 // Pinned binary checksums from Homebrew/homebrew-cask and ScoopInstaller/Versions.
 const checksums = {
     'darwin-arm64': '459d6830a411df86e9db0579b803932f0c6bc2eff6a7ab483385f1676fdab21f',
@@ -33420,11 +33423,13 @@ function getCliRelease(version, sha256, platform = process.platform, arch = proc
     if (!Object.hasOwn(checksums, cacheArch)) {
         throw new Error(`Unsupported Unity CLI platform: ${platform}/${arch}`);
     }
-    if (!/^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/.test(version)) {
-        throw new Error('cli-version must be an exact version, such as 1.0.0-beta.9');
+    const isLatest = version === LATEST_CLI_VERSION;
+    if (!isLatest && !/^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/.test(version)) {
+        throw new Error('cli-version must be latest or an exact version, such as 1.0.0-beta.9');
     }
-    const expected = sha256 || (version === DEFAULT_CLI_VERSION ? checksums[cacheArch] : '');
-    if (!/^[0-9a-f]{64}$/i.test(expected)) {
+    const expected = sha256 || (version === PINNED_CLI_VERSION ? checksums[cacheArch] : '');
+    // The latest binary changes over time, so its checksum cannot be pinned.
+    if (expected === '' ? !isLatest : !/^[0-9a-f]{64}$/i.test(expected)) {
         throw new Error('cli-sha256 must be a SHA-256 hash and is required for a custom cli-version');
     }
     const extension = platform === 'win32' ? '.exe' : '';
@@ -33447,14 +33452,18 @@ async function verifyChecksum(file, expected) {
  */
 async function setupUnityCli(version, sha256) {
     const release = getCliRelease(version, sha256);
-    let directory = find('unity-cli', version, release.cacheArch);
+    // Without a checksum, a cached latest binary cannot be verified as current.
+    let directory = release.sha256
+        ? find('unity-cli', version, release.cacheArch)
+        : '';
     if (directory) {
         await verifyChecksum(path$1.join(directory, release.filename), release.sha256);
     }
     else {
         info(`Downloading Unity CLI ${version} for ${release.cacheArch}`);
         const downloaded = await downloadTool(release.url);
-        await verifyChecksum(downloaded, release.sha256);
+        if (release.sha256)
+            await verifyChecksum(downloaded, release.sha256);
         if (process.platform !== 'win32')
             await chmod$1(downloaded, 0o755);
         directory = await cacheFile(downloaded, release.filename, 'unity-cli', version, release.cacheArch);

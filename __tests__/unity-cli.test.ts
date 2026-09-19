@@ -16,8 +16,13 @@ jest.unstable_mockModule('@actions/tool-cache', () => ({
   cacheFile
 }))
 
-const { DEFAULT_CLI_VERSION, getCliRelease, setupUnityCli } =
-  await import('../src/unity-cli.js')
+const {
+  DEFAULT_CLI_VERSION,
+  LATEST_CLI_VERSION,
+  PINNED_CLI_VERSION,
+  getCliRelease,
+  setupUnityCli
+} = await import('../src/unity-cli.js')
 
 describe('Unity CLI releases', () => {
   it.each([
@@ -28,9 +33,9 @@ describe('Unity CLI releases', () => {
     ['win32', 'x64', 'windows-x64', 'unity.exe'],
     ['win32', 'arm64', 'windows-arm64', 'unity.exe']
   ] as const)('Resolves %s/%s', (platform, arch, target, filename) => {
-    const release = getCliRelease(DEFAULT_CLI_VERSION, '', platform, arch)
+    const release = getCliRelease(PINNED_CLI_VERSION, '', platform, arch)
     expect(release).toEqual({
-      url: `https://public-cdn.cloud.unity3d.com/hub/prod/cli/${DEFAULT_CLI_VERSION}/unity-${target}${platform === 'win32' ? '.exe' : ''}`,
+      url: `https://public-cdn.cloud.unity3d.com/hub/prod/cli/${PINNED_CLI_VERSION}/unity-${target}${platform === 'win32' ? '.exe' : ''}`,
       sha256: expect.stringMatching(/^[0-9a-f]{64}$/),
       filename,
       cacheArch: target
@@ -47,11 +52,11 @@ describe('Unity CLI releases', () => {
     ).toThrow('Unsupported Unity CLI platform')
   })
 
-  it.each(['latest', '../1.0.0', '1.0.0/foo', '1.0.0?query', ''])(
+  it.each(['stable', '../1.0.0', '1.0.0/foo', '1.0.0?query', ''])(
     'Rejects invalid CLI version %s',
     (version) => {
       expect(() => getCliRelease(version, '', 'linux', 'x64')).toThrow(
-        'cli-version must be an exact version'
+        'cli-version must be latest or an exact version'
       )
     }
   )
@@ -64,7 +69,30 @@ describe('Unity CLI releases', () => {
 
   it('Rejects malformed checksum overrides', () => {
     expect(() =>
-      getCliRelease(DEFAULT_CLI_VERSION, 'bad', 'linux', 'x64')
+      getCliRelease(PINNED_CLI_VERSION, 'bad', 'linux', 'x64')
+    ).toThrow('cli-sha256')
+  })
+
+  it('Defaults to latest and resolves it without a checksum', () => {
+    expect(DEFAULT_CLI_VERSION).toBe(LATEST_CLI_VERSION)
+    const release = getCliRelease(LATEST_CLI_VERSION, '', 'linux', 'x64')
+    expect(release.url).toContain('/latest/unity-linux-x64')
+    expect(release.sha256).toBe('')
+  })
+
+  it('Pins latest to a checksum when one is supplied', () => {
+    const release = getCliRelease(
+      LATEST_CLI_VERSION,
+      'A'.repeat(64),
+      'linux',
+      'x64'
+    )
+    expect(release.sha256).toBe('a'.repeat(64))
+  })
+
+  it('Rejects a malformed checksum for latest', () => {
+    expect(() =>
+      getCliRelease(LATEST_CLI_VERSION, 'bad', 'linux', 'x64')
     ).toThrow('cli-sha256')
   })
 
@@ -166,6 +194,19 @@ describe('Unity CLI setup', () => {
       'Cache unavailable'
     )
     expect(core.addPath).not.toHaveBeenCalled()
+  })
+
+  it('Downloads latest without verifying or reusing the tool cache', async () => {
+    find.mockReturnValue(directory)
+    await expect(setupUnityCli(LATEST_CLI_VERSION, '')).resolves.toBe(
+      downloaded
+    )
+    expect(find).not.toHaveBeenCalled()
+    expect(downloadTool).toHaveBeenCalledWith(
+      getCliRelease(LATEST_CLI_VERSION, '').url
+    )
+    expect(cacheFile).toHaveBeenCalled()
+    expect(core.addPath).toHaveBeenCalledWith(directory)
   })
 
   it('Propagates missing binary failures', async () => {

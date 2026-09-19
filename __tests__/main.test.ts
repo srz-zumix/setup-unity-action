@@ -15,7 +15,7 @@ jest.unstable_mockModule('@actions/exec', () => ({ exec: execMock }))
 jest.unstable_mockModule('node:fs/promises', () => ({ mkdir: mkdirMock }))
 jest.unstable_mockModule('../src/inputs.js', () => ({ getInstallArgs }))
 jest.unstable_mockModule('../src/unity-cli.js', () => ({
-  DEFAULT_CLI_VERSION: '1.0.0-beta.9',
+  DEFAULT_CLI_VERSION: 'latest',
   setupUnityCli
 }))
 
@@ -40,11 +40,11 @@ describe('main.ts', () => {
   it('Installs Unity and sets CLI outputs', async () => {
     await run()
 
-    expect(setupUnityCli).toHaveBeenCalledWith('1.0.0-beta.9', '')
+    expect(setupUnityCli).toHaveBeenCalledWith('latest', '')
     expect(execMock).toHaveBeenCalledTimes(1)
     expect(execMock).toHaveBeenCalledWith(cliPath, args)
     expect(core.setOutput).toHaveBeenCalledWith('cli-path', cliPath)
-    expect(core.setOutput).toHaveBeenCalledWith('cli-version', '1.0.0-beta.9')
+    expect(core.setOutput).toHaveBeenCalledWith('cli-version', 'latest')
     expect(core.setFailed).not.toHaveBeenCalled()
   })
 

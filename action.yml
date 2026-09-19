@@ -58,8 +58,8 @@ inputs:
       Optional Editor installation root, configured with unity install-path
       --set
   cli-version:
-    description: Exact Unity CLI version to download
-    default: 1.0.0-beta.9
+    description: Unity CLI version to download (latest or an exact version)
+    default: latest
   cli-sha256:
     description:
       CLI binary SHA-256; required when overriding the bundled CLI version
