@@ -216,13 +216,13 @@ describe('Unity CLI setup', () => {
   it('Falls back to the x64 latest CLI on macOS ARM when the ARM download is unavailable', async () => {
     Object.defineProperty(process, 'platform', { value: 'darwin' })
     Object.defineProperty(process, 'arch', { value: 'arm64' })
+    const fallbackRelease = getCliRelease(LATEST_CLI_VERSION, '', 'darwin', 'x64')
+    const fallbackCliPath = path.join(directory, fallbackRelease.filename)
     downloadTool
       .mockRejectedValueOnce(new Error('Unexpected HTTP response: 404'))
       .mockResolvedValueOnce(downloaded)
 
-    await expect(setupUnityCli(LATEST_CLI_VERSION, '')).resolves.toBe(
-      downloaded
-    )
+    await expect(setupUnityCli(LATEST_CLI_VERSION, '')).resolves.toBe(fallbackCliPath)
 
     expect(downloadTool).toHaveBeenNthCalledWith(
       1,
@@ -230,7 +230,7 @@ describe('Unity CLI setup', () => {
     )
     expect(downloadTool).toHaveBeenNthCalledWith(
       2,
-      getCliRelease(LATEST_CLI_VERSION, '', 'darwin', 'x64').url
+      fallbackRelease.url
     )
     expect(cacheFile).toHaveBeenCalledWith(
       downloaded,
@@ -245,6 +245,8 @@ describe('Unity CLI setup', () => {
   it('Falls back to the x64 latest CLI when the ARM download reports HTTP 404 via status', async () => {
     Object.defineProperty(process, 'platform', { value: 'darwin' })
     Object.defineProperty(process, 'arch', { value: 'arm64' })
+    const fallbackRelease = getCliRelease(LATEST_CLI_VERSION, '', 'darwin', 'x64')
+    const fallbackCliPath = path.join(directory, fallbackRelease.filename)
     downloadTool
       .mockRejectedValueOnce(
         Object.assign(new Error('Download unavailable'), {
@@ -253,9 +255,7 @@ describe('Unity CLI setup', () => {
       )
       .mockResolvedValueOnce(downloaded)
 
-    await expect(setupUnityCli(LATEST_CLI_VERSION, '')).resolves.toBe(
-      downloaded
-    )
+    await expect(setupUnityCli(LATEST_CLI_VERSION, '')).resolves.toBe(fallbackCliPath)
 
     expect(downloadTool).toHaveBeenNthCalledWith(
       1,
@@ -263,7 +263,7 @@ describe('Unity CLI setup', () => {
     )
     expect(downloadTool).toHaveBeenNthCalledWith(
       2,
-      getCliRelease(LATEST_CLI_VERSION, '', 'darwin', 'x64').url
+      fallbackRelease.url
     )
     expect(cacheFile).toHaveBeenCalledWith(
       downloaded,
