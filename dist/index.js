@@ -33503,11 +33503,16 @@ async function setupUnityCli(version, sha256) {
                 (isHttpNotFound(error) ||
                     (error instanceof Error &&
                         /Unexpected HTTP response:\s*404\b/.test(error.message)));
-            if (!canFallback)
+            if (canFallback) {
+                fallbackAttempted = true;
+                lastError = error;
+                info('Falling back to Unity CLI latest for darwin-x64');
+                continue;
+            }
+            if (!fallbackAttempted)
                 throw error;
-            fallbackAttempted = true;
             lastError = error;
-            info('Falling back to Unity CLI latest for darwin-x64');
+            break;
         }
     }
     throw new Error(`Unable to resolve a Unity CLI download for this runner: ${lastError instanceof Error ? lastError.message : String(lastError)}`);

@@ -149,10 +149,15 @@ export async function setupUnityCli(
         (isHttpNotFound(error) ||
           (error instanceof Error &&
             /Unexpected HTTP response:\s*404\b/.test(error.message)))
-      if (!canFallback) throw error
-      fallbackAttempted = true
+      if (canFallback) {
+        fallbackAttempted = true
+        lastError = error
+        core.info('Falling back to Unity CLI latest for darwin-x64')
+        continue
+      }
+      if (!fallbackAttempted) throw error
       lastError = error
-      core.info('Falling back to Unity CLI latest for darwin-x64')
+      break
     }
   }
 

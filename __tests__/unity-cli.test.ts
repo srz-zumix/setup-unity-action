@@ -274,6 +274,28 @@ describe('Unity CLI setup', () => {
     )
   })
 
+  it('Preserves the fallback download failure after the ARM latest download 404s', async () => {
+    Object.defineProperty(process, 'platform', { value: 'darwin' })
+    Object.defineProperty(process, 'arch', { value: 'arm64' })
+    downloadTool
+      .mockRejectedValueOnce(new Error('Unexpected HTTP response: 404'))
+      .mockRejectedValueOnce(new Error('Fallback unavailable'))
+
+    await expect(setupUnityCli(LATEST_CLI_VERSION, '')).rejects.toThrow(
+      'Unable to resolve a Unity CLI download for this runner: Fallback unavailable'
+    )
+    expect(downloadTool).toHaveBeenNthCalledWith(
+      1,
+      getCliRelease(LATEST_CLI_VERSION, '', 'darwin', 'arm64').url
+    )
+    expect(downloadTool).toHaveBeenNthCalledWith(
+      2,
+      getCliRelease(LATEST_CLI_VERSION, '', 'darwin', 'x64').url
+    )
+    expect(cacheFile).not.toHaveBeenCalled()
+    expect(core.addPath).not.toHaveBeenCalled()
+  })
+
   it('Propagates missing binary failures', async () => {
     downloadTool.mockResolvedValue(path.join(directory, 'missing'))
     await expect(setupUnityCli(DEFAULT_CLI_VERSION, checksum)).rejects.toThrow(
