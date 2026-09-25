@@ -282,7 +282,7 @@ describe('Unity CLI setup', () => {
       .mockRejectedValueOnce(new Error('Fallback unavailable'))
 
     await expect(setupUnityCli(LATEST_CLI_VERSION, '')).rejects.toThrow(
-      'Unable to resolve a Unity CLI download for this runner: Fallback unavailable'
+      'Fallback unavailable'
     )
     expect(downloadTool).toHaveBeenNthCalledWith(
       1,

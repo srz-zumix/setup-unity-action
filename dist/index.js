@@ -33515,7 +33515,9 @@ async function setupUnityCli(version, sha256) {
             break;
         }
     }
-    throw new Error(`Unable to resolve a Unity CLI download for this runner: ${lastError instanceof Error ? lastError.message : String(lastError)}`);
+    if (lastError instanceof Error)
+        throw lastError;
+    throw new Error(`Unable to resolve a Unity CLI download for this runner: ${String(lastError)}`);
 }
 
 /**
