@@ -33489,7 +33489,7 @@ async function setupUnityCli(version, sha256) {
                 const downloaded = await downloadTool(release.url);
                 if (release.sha256)
                     await verifyChecksum(downloaded, release.sha256);
-                if (process.platform !== 'win32')
+                if (!release.filename.endsWith('.exe'))
                     await chmod$1(downloaded, 0o755);
                 directory = await cacheFile(downloaded, release.filename, 'unity-cli', version, release.cacheArch);
             }

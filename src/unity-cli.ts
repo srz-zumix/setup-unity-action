@@ -129,7 +129,7 @@ export async function setupUnityCli(
         core.info(`Downloading Unity CLI ${version} for ${release.cacheArch}`)
         const downloaded = await tc.downloadTool(release.url)
         if (release.sha256) await verifyChecksum(downloaded, release.sha256)
-        if (process.platform !== 'win32') await chmod(downloaded, 0o755)
+        if (!release.filename.endsWith('.exe')) await chmod(downloaded, 0o755)
         directory = await tc.cacheFile(
           downloaded,
           release.filename,
