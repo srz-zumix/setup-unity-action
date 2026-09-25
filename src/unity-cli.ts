@@ -11,7 +11,7 @@ export const LATEST_CLI_VERSION = 'latest'
 /** CLI version whose binary checksums are pinned below. */
 export const PINNED_CLI_VERSION = '1.0.0-beta.9'
 
-export const DEFAULT_CLI_VERSION = LATEST_CLI_VERSION
+export const DEFAULT_CLI_VERSION = PINNED_CLI_VERSION
 
 // Pinned binary checksums from Homebrew/homebrew-cask and ScoopInstaller/Versions.
 const checksums: Record<string, string> = {
@@ -113,6 +113,7 @@ export async function setupUnityCli(
   const fallbackRelease = getFallbackCliRelease(version, sha256)
   if (fallbackRelease) releases.push(fallbackRelease)
   let fallbackAttempted = false
+  let lastError: unknown
 
   for (const release of releases) {
     try {
@@ -150,9 +151,14 @@ export async function setupUnityCli(
             /Unexpected HTTP response:\s*404\b/.test(error.message)))
       if (!canFallback) throw error
       fallbackAttempted = true
+      lastError = error
       core.info('Falling back to Unity CLI latest for darwin-x64')
     }
   }
 
-  throw new Error('Unable to resolve a Unity CLI download for this runner')
+  throw new Error(
+    `Unable to resolve a Unity CLI download for this runner: ${
+      lastError instanceof Error ? lastError.message : String(lastError)
+    }`
+  )
 }

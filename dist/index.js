@@ -33404,7 +33404,7 @@ function _getGlobal(key, defaultValue) {
 const LATEST_CLI_VERSION = 'latest';
 /** CLI version whose binary checksums are pinned below. */
 const PINNED_CLI_VERSION = '1.0.0-beta.9';
-const DEFAULT_CLI_VERSION = LATEST_CLI_VERSION;
+const DEFAULT_CLI_VERSION = PINNED_CLI_VERSION;
 // Pinned binary checksums from Homebrew/homebrew-cask and ScoopInstaller/Versions.
 const checksums = {
     'darwin-arm64': '459d6830a411df86e9db0579b803932f0c6bc2eff6a7ab483385f1676fdab21f',
@@ -33475,6 +33475,7 @@ async function setupUnityCli(version, sha256) {
     if (fallbackRelease)
         releases.push(fallbackRelease);
     let fallbackAttempted = false;
+    let lastError;
     for (const release of releases) {
         try {
             // Without a checksum, a cached latest binary cannot be verified as current.
@@ -33505,10 +33506,11 @@ async function setupUnityCli(version, sha256) {
             if (!canFallback)
                 throw error;
             fallbackAttempted = true;
+            lastError = error;
             info('Falling back to Unity CLI latest for darwin-x64');
         }
     }
-    throw new Error('Unable to resolve a Unity CLI download for this runner');
+    throw new Error(`Unable to resolve a Unity CLI download for this runner: ${lastError instanceof Error ? lastError.message : String(lastError)}`);
 }
 
 /**

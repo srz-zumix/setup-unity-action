@@ -87,7 +87,7 @@ workflows.
 | `list-modules`     | `--list-modules`: list modules and exit                                         | `false`                              |
 | `format`           | `--format`: `human`, `json`, `tsv`, `ndjson` or `github`                        | `human`                              |
 | `install-path`     | Set the Editor root with `unity install-path --set` before installing           | CLI default                          |
-| `cli-version`      | CLI version to download (`latest` or an exact version)                          | `latest`                             |
+| `cli-version`      | CLI version to download (`latest` or an exact version)                          | `1.0.0-beta.9`                       |
 | `cli-sha256`       | SHA-256 of the runner-specific CLI binary                                       | Built-in checksum for `1.0.0-beta.9` |
 
 - The action always adds `--non-interactive` and `--no-banner`. With
@@ -145,12 +145,13 @@ The default CLI checksums are pinned from the
 [Homebrew manifest](https://github.com/Homebrew/homebrew-cask/blob/c9c6ce69ce87cfa22290d2a0351f0f76894037a3/Casks/u/unity-cli.rb)
 and
 [Scoop manifest](https://github.com/ScoopInstaller/Versions/blob/2bcdda3b7cb2d800949781b8c0e0bdfa5315e9d3/bucket/unity-cli-beta.json).
-They apply to `cli-version: 1.0.0-beta.9`. The default `cli-version: latest`
-always downloads the newest CLI, so its binary cannot be checksum-pinned or
-reused from the tool cache; set `cli-version` and `cli-sha256` to an exact
-version and trusted hash for each runner platform when reproducibility or
-checksum verification is required. Any other custom `cli-version` also requires
-`cli-sha256`. Custom CLI versions must support the options you select.
+They apply to the default `cli-version: 1.0.0-beta.9`. Setting
+`cli-version: latest` always downloads the newest CLI, so its binary cannot be
+checksum-pinned or reused from the tool cache; set `cli-version` and
+`cli-sha256` to an exact version and trusted hash for each runner platform when
+reproducibility or checksum verification is required. Any other custom
+`cli-version` also requires `cli-sha256`. Custom CLI versions must support the
+options you select.
 
 The command mapping follows Unity's
 [official CLI reference](https://github.com/Unity-Technologies/skills/blob/645158263ad5f93296ca54444db8f2ec5dbf8c4d/skills/unity-cli/references/editors-install.md).

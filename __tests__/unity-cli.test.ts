@@ -74,7 +74,7 @@ describe('Unity CLI releases', () => {
   })
 
   it('Defaults to latest and resolves it without a checksum', () => {
-    expect(DEFAULT_CLI_VERSION).toBe(LATEST_CLI_VERSION)
+    expect(DEFAULT_CLI_VERSION).toBe(PINNED_CLI_VERSION)
     const release = getCliRelease(LATEST_CLI_VERSION, '', 'linux', 'x64')
     expect(release.url).toContain('/latest/unity-linux-x64')
     expect(release.sha256).toBe('')
