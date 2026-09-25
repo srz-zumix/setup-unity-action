@@ -118,8 +118,9 @@ list modes.
 CLI downloads support x64 and ARM64 on macOS, Windows and Linux. The CLI binary
 is selected automatically for the **runner's** OS and architecture; the
 `architecture` input instead controls the **Editor** architecture (`x86_64`, not
-`x64`). An ARM64 CLI does not imply that every Editor release or module supports
-ARM64 on that OS.
+`x64`). On macOS ARM64 runners, the action falls back to the latest x64 CLI if
+Unity does not publish a latest ARM64 binary. An ARM64 CLI does not imply that
+every Editor release or module supports ARM64 on that OS.
 
 Use a runner compatible with Node.js 24 actions. Self-hosted runners also need
 the OS dependencies, disk space and installation permissions required by Unity.

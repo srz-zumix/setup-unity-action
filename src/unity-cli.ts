@@ -67,6 +67,25 @@ export function getCliRelease(
   }
 }
 
+type CliRelease = ReturnType<typeof getCliRelease>
+
+function getFallbackCliRelease(
+  version: string,
+  sha256: string,
+  platform: NodeJS.Platform = process.platform,
+  arch: string = process.arch
+): CliRelease | null {
+  if (
+    version === LATEST_CLI_VERSION &&
+    sha256 === '' &&
+    platform === 'darwin' &&
+    arch === 'arm64'
+  ) {
+    return getCliRelease(version, sha256, platform, 'x64')
+  }
+  return null
+}
+
 async function verifyChecksum(file: string, expected: string): Promise<void> {
   const hash = createHash('sha256')
   await pipeline(createReadStream(file), hash)
@@ -82,27 +101,50 @@ export async function setupUnityCli(
   version: string,
   sha256: string
 ): Promise<string> {
-  const release = getCliRelease(version, sha256)
-  // Without a checksum, a cached latest binary cannot be verified as current.
-  let directory = release.sha256
-    ? tc.find('unity-cli', version, release.cacheArch)
-    : ''
-  if (directory) {
-    await verifyChecksum(path.join(directory, release.filename), release.sha256)
-  } else {
-    core.info(`Downloading Unity CLI ${version} for ${release.cacheArch}`)
-    const downloaded = await tc.downloadTool(release.url)
-    if (release.sha256) await verifyChecksum(downloaded, release.sha256)
-    if (process.platform !== 'win32') await chmod(downloaded, 0o755)
-    directory = await tc.cacheFile(
-      downloaded,
-      release.filename,
-      'unity-cli',
-      version,
-      release.cacheArch
-    )
+  const primaryRelease = getCliRelease(version, sha256)
+  const releases: CliRelease[] = [primaryRelease]
+  const fallbackRelease = getFallbackCliRelease(version, sha256)
+  if (fallbackRelease) releases.push(fallbackRelease)
+  let fallbackAttempted = false
+
+  for (const release of releases) {
+    try {
+      // Without a checksum, a cached latest binary cannot be verified as current.
+      let directory = release.sha256
+        ? tc.find('unity-cli', version, release.cacheArch)
+        : ''
+      if (directory) {
+        await verifyChecksum(
+          path.join(directory, release.filename),
+          release.sha256
+        )
+      } else {
+        core.info(`Downloading Unity CLI ${version} for ${release.cacheArch}`)
+        const downloaded = await tc.downloadTool(release.url)
+        if (release.sha256) await verifyChecksum(downloaded, release.sha256)
+        if (process.platform !== 'win32') await chmod(downloaded, 0o755)
+        directory = await tc.cacheFile(
+          downloaded,
+          release.filename,
+          'unity-cli',
+          version,
+          release.cacheArch
+        )
+      }
+
+      core.addPath(directory)
+      return path.join(directory, release.filename)
+    } catch (error) {
+      const canFallback =
+        !fallbackAttempted &&
+        release === primaryRelease &&
+        error instanceof Error &&
+        /Unexpected HTTP response:\s*404\b/.test(error.message)
+      if (!canFallback) throw error
+      fallbackAttempted = true
+      core.info('Falling back to Unity CLI latest for darwin-x64')
+    }
   }
 
-  core.addPath(directory)
-  return path.join(directory, release.filename)
+  throw new Error('Unable to resolve a Unity CLI download for this runner')
 }

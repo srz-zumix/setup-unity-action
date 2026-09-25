@@ -114,6 +114,8 @@ describe('Unity CLI setup', () => {
   const content = 'test binary content'
   const checksum = createHash('sha256').update(content).digest('hex')
   const filename = process.platform === 'win32' ? 'unity.exe' : 'unity'
+  const originalPlatform = process.platform
+  const originalArch = process.arch
 
   beforeEach(async () => {
     directory = await mkdtemp(path.join(tmpdir(), 'setup-unity-test-'))
@@ -126,6 +128,8 @@ describe('Unity CLI setup', () => {
 
   afterEach(async () => {
     jest.resetAllMocks()
+    Object.defineProperty(process, 'platform', { value: originalPlatform })
+    Object.defineProperty(process, 'arch', { value: originalArch })
     await rm(directory, { recursive: true, force: true })
   })
 
@@ -206,6 +210,35 @@ describe('Unity CLI setup', () => {
       getCliRelease(LATEST_CLI_VERSION, '').url
     )
     expect(cacheFile).toHaveBeenCalled()
+    expect(core.addPath).toHaveBeenCalledWith(directory)
+  })
+
+  it('Falls back to the x64 latest CLI on macOS ARM when the ARM download is unavailable', async () => {
+    Object.defineProperty(process, 'platform', { value: 'darwin' })
+    Object.defineProperty(process, 'arch', { value: 'arm64' })
+    downloadTool
+      .mockRejectedValueOnce(new Error('Unexpected HTTP response: 404'))
+      .mockResolvedValueOnce(downloaded)
+
+    await expect(setupUnityCli(LATEST_CLI_VERSION, '')).resolves.toBe(
+      downloaded
+    )
+
+    expect(downloadTool).toHaveBeenNthCalledWith(
+      1,
+      getCliRelease(LATEST_CLI_VERSION, '', 'darwin', 'arm64').url
+    )
+    expect(downloadTool).toHaveBeenNthCalledWith(
+      2,
+      getCliRelease(LATEST_CLI_VERSION, '', 'darwin', 'x64').url
+    )
+    expect(cacheFile).toHaveBeenCalledWith(
+      downloaded,
+      'unity',
+      'unity-cli',
+      LATEST_CLI_VERSION,
+      'darwin-x64'
+    )
     expect(core.addPath).toHaveBeenCalledWith(directory)
   })
 
