@@ -33430,7 +33430,7 @@ function getCliRelease(version, sha256, platform = process.platform, arch = proc
     const expected = sha256 || (version === PINNED_CLI_VERSION ? checksums[cacheArch] : '');
     // The latest binary changes over time, so its checksum cannot be pinned.
     if (expected === '' ? !isLatest : !/^[0-9a-f]{64}$/i.test(expected)) {
-        throw new Error('cli-sha256 must be a SHA-256 hash and is required for a custom cli-version');
+        throw new Error('cli-sha256 must be a SHA-256 hash; exact custom cli-version values require it, while latest may omit it');
     }
     const extension = platform === 'win32' ? '.exe' : '';
     return {
@@ -33439,6 +33439,15 @@ function getCliRelease(version, sha256, platform = process.platform, arch = proc
         filename: `unity${extension}`,
         cacheArch
     };
+}
+function isHttpNotFound(error) {
+    if (typeof error !== 'object' || error === null)
+        return false;
+    if ('httpStatusCode' in error)
+        return error.httpStatusCode === 404;
+    if ('statusCode' in error)
+        return error.statusCode === 404;
+    return false;
 }
 function getFallbackCliRelease(version, sha256, platform = process.platform, arch = process.arch) {
     if (version === LATEST_CLI_VERSION &&
@@ -33490,8 +33499,9 @@ async function setupUnityCli(version, sha256) {
         catch (error) {
             const canFallback = !fallbackAttempted &&
                 release === primaryRelease &&
-                error instanceof Error &&
-                /Unexpected HTTP response:\s*404\b/.test(error.message);
+                (isHttpNotFound(error) ||
+                    (error instanceof Error &&
+                        /Unexpected HTTP response:\s*404\b/.test(error.message)));
             if (!canFallback)
                 throw error;
             fallbackAttempted = true;

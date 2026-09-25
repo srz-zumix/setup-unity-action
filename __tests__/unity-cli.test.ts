@@ -242,6 +242,38 @@ describe('Unity CLI setup', () => {
     expect(core.addPath).toHaveBeenCalledWith(directory)
   })
 
+  it('Falls back to the x64 latest CLI when the ARM download reports HTTP 404 via status', async () => {
+    Object.defineProperty(process, 'platform', { value: 'darwin' })
+    Object.defineProperty(process, 'arch', { value: 'arm64' })
+    downloadTool
+      .mockRejectedValueOnce(
+        Object.assign(new Error('Download unavailable'), {
+          httpStatusCode: 404
+        })
+      )
+      .mockResolvedValueOnce(downloaded)
+
+    await expect(setupUnityCli(LATEST_CLI_VERSION, '')).resolves.toBe(
+      downloaded
+    )
+
+    expect(downloadTool).toHaveBeenNthCalledWith(
+      1,
+      getCliRelease(LATEST_CLI_VERSION, '', 'darwin', 'arm64').url
+    )
+    expect(downloadTool).toHaveBeenNthCalledWith(
+      2,
+      getCliRelease(LATEST_CLI_VERSION, '', 'darwin', 'x64').url
+    )
+    expect(cacheFile).toHaveBeenCalledWith(
+      downloaded,
+      'unity',
+      'unity-cli',
+      LATEST_CLI_VERSION,
+      'darwin-x64'
+    )
+  })
+
   it('Propagates missing binary failures', async () => {
     downloadTool.mockResolvedValue(path.join(directory, 'missing'))
     await expect(setupUnityCli(DEFAULT_CLI_VERSION, checksum)).rejects.toThrow(

@@ -55,7 +55,7 @@ export function getCliRelease(
   // The latest binary changes over time, so its checksum cannot be pinned.
   if (expected === '' ? !isLatest : !/^[0-9a-f]{64}$/i.test(expected)) {
     throw new Error(
-      'cli-sha256 must be a SHA-256 hash and is required for a custom cli-version'
+      'cli-sha256 must be a SHA-256 hash; exact custom cli-version values require it, while latest may omit it'
     )
   }
   const extension = platform === 'win32' ? '.exe' : ''
@@ -68,6 +68,13 @@ export function getCliRelease(
 }
 
 type CliRelease = ReturnType<typeof getCliRelease>
+
+function isHttpNotFound(error: unknown): boolean {
+  if (typeof error !== 'object' || error === null) return false
+  if ('httpStatusCode' in error) return error.httpStatusCode === 404
+  if ('statusCode' in error) return error.statusCode === 404
+  return false
+}
 
 function getFallbackCliRelease(
   version: string,
@@ -138,8 +145,9 @@ export async function setupUnityCli(
       const canFallback =
         !fallbackAttempted &&
         release === primaryRelease &&
-        error instanceof Error &&
-        /Unexpected HTTP response:\s*404\b/.test(error.message)
+        (isHttpNotFound(error) ||
+          (error instanceof Error &&
+            /Unexpected HTTP response:\s*404\b/.test(error.message)))
       if (!canFallback) throw error
       fallbackAttempted = true
       core.info('Falling back to Unity CLI latest for darwin-x64')
