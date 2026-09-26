@@ -16,8 +16,13 @@ jest.unstable_mockModule('@actions/tool-cache', () => ({
   cacheFile
 }))
 
-const { DEFAULT_CLI_VERSION, getCliRelease, setupUnityCli } =
-  await import('../src/unity-cli.js')
+const {
+  DEFAULT_CLI_VERSION,
+  LATEST_CLI_VERSION,
+  PINNED_CLI_VERSION,
+  getCliRelease,
+  setupUnityCli
+} = await import('../src/unity-cli.js')
 
 describe('Unity CLI releases', () => {
   it.each([
@@ -28,9 +33,9 @@ describe('Unity CLI releases', () => {
     ['win32', 'x64', 'windows-x64', 'unity.exe'],
     ['win32', 'arm64', 'windows-arm64', 'unity.exe']
   ] as const)('Resolves %s/%s', (platform, arch, target, filename) => {
-    const release = getCliRelease(DEFAULT_CLI_VERSION, '', platform, arch)
+    const release = getCliRelease(PINNED_CLI_VERSION, '', platform, arch)
     expect(release).toEqual({
-      url: `https://public-cdn.cloud.unity3d.com/hub/prod/cli/${DEFAULT_CLI_VERSION}/unity-${target}${platform === 'win32' ? '.exe' : ''}`,
+      url: `https://public-cdn.cloud.unity3d.com/hub/prod/cli/${PINNED_CLI_VERSION}/unity-${target}${platform === 'win32' ? '.exe' : ''}`,
       sha256: expect.stringMatching(/^[0-9a-f]{64}$/),
       filename,
       cacheArch: target
@@ -47,11 +52,11 @@ describe('Unity CLI releases', () => {
     ).toThrow('Unsupported Unity CLI platform')
   })
 
-  it.each(['latest', '../1.0.0', '1.0.0/foo', '1.0.0?query', ''])(
+  it.each(['stable', '../1.0.0', '1.0.0/foo', '1.0.0?query', ''])(
     'Rejects invalid CLI version %s',
     (version) => {
       expect(() => getCliRelease(version, '', 'linux', 'x64')).toThrow(
-        'cli-version must be an exact version'
+        'cli-version must be latest or an exact version'
       )
     }
   )
@@ -64,7 +69,30 @@ describe('Unity CLI releases', () => {
 
   it('Rejects malformed checksum overrides', () => {
     expect(() =>
-      getCliRelease(DEFAULT_CLI_VERSION, 'bad', 'linux', 'x64')
+      getCliRelease(PINNED_CLI_VERSION, 'bad', 'linux', 'x64')
+    ).toThrow('cli-sha256')
+  })
+
+  it('Defaults to latest and resolves it without a checksum', () => {
+    expect(DEFAULT_CLI_VERSION).toBe(PINNED_CLI_VERSION)
+    const release = getCliRelease(LATEST_CLI_VERSION, '', 'linux', 'x64')
+    expect(release.url).toContain('/latest/unity-linux-x64')
+    expect(release.sha256).toBe('')
+  })
+
+  it('Pins latest to a checksum when one is supplied', () => {
+    const release = getCliRelease(
+      LATEST_CLI_VERSION,
+      'A'.repeat(64),
+      'linux',
+      'x64'
+    )
+    expect(release.sha256).toBe('a'.repeat(64))
+  })
+
+  it('Rejects a malformed checksum for latest', () => {
+    expect(() =>
+      getCliRelease(LATEST_CLI_VERSION, 'bad', 'linux', 'x64')
     ).toThrow('cli-sha256')
   })
 
@@ -86,6 +114,8 @@ describe('Unity CLI setup', () => {
   const content = 'test binary content'
   const checksum = createHash('sha256').update(content).digest('hex')
   const filename = process.platform === 'win32' ? 'unity.exe' : 'unity'
+  const originalPlatform = process.platform
+  const originalArch = process.arch
 
   beforeEach(async () => {
     directory = await mkdtemp(path.join(tmpdir(), 'setup-unity-test-'))
@@ -98,6 +128,8 @@ describe('Unity CLI setup', () => {
 
   afterEach(async () => {
     jest.resetAllMocks()
+    Object.defineProperty(process, 'platform', { value: originalPlatform })
+    Object.defineProperty(process, 'arch', { value: originalArch })
     await rm(directory, { recursive: true, force: true })
   })
 
@@ -165,6 +197,110 @@ describe('Unity CLI setup', () => {
     await expect(setupUnityCli(DEFAULT_CLI_VERSION, checksum)).rejects.toThrow(
       'Cache unavailable'
     )
+    expect(core.addPath).not.toHaveBeenCalled()
+  })
+
+  it('Downloads latest without verifying or reusing the tool cache', async () => {
+    find.mockReturnValue(directory)
+    await expect(setupUnityCli(LATEST_CLI_VERSION, '')).resolves.toBe(
+      downloaded
+    )
+    expect(find).not.toHaveBeenCalled()
+    expect(downloadTool).toHaveBeenCalledWith(
+      getCliRelease(LATEST_CLI_VERSION, '').url
+    )
+    expect(cacheFile).toHaveBeenCalled()
+    expect(core.addPath).toHaveBeenCalledWith(directory)
+  })
+
+  it('Falls back to the x64 latest CLI on macOS ARM when the ARM download is unavailable', async () => {
+    Object.defineProperty(process, 'platform', { value: 'darwin' })
+    Object.defineProperty(process, 'arch', { value: 'arm64' })
+    const fallbackRelease = getCliRelease(
+      LATEST_CLI_VERSION,
+      '',
+      'darwin',
+      'x64'
+    )
+    const fallbackCliPath = path.join(directory, fallbackRelease.filename)
+    downloadTool
+      .mockRejectedValueOnce(new Error('Unexpected HTTP response: 404'))
+      .mockResolvedValueOnce(downloaded)
+
+    await expect(setupUnityCli(LATEST_CLI_VERSION, '')).resolves.toBe(
+      fallbackCliPath
+    )
+
+    expect(downloadTool).toHaveBeenNthCalledWith(
+      1,
+      getCliRelease(LATEST_CLI_VERSION, '', 'darwin', 'arm64').url
+    )
+    expect(downloadTool).toHaveBeenNthCalledWith(2, fallbackRelease.url)
+    expect(cacheFile).toHaveBeenCalledWith(
+      downloaded,
+      'unity',
+      'unity-cli',
+      LATEST_CLI_VERSION,
+      'darwin-x64'
+    )
+    expect(core.addPath).toHaveBeenCalledWith(directory)
+  })
+
+  it('Falls back to the x64 latest CLI when the ARM download reports HTTP 404 via status', async () => {
+    Object.defineProperty(process, 'platform', { value: 'darwin' })
+    Object.defineProperty(process, 'arch', { value: 'arm64' })
+    const fallbackRelease = getCliRelease(
+      LATEST_CLI_VERSION,
+      '',
+      'darwin',
+      'x64'
+    )
+    const fallbackCliPath = path.join(directory, fallbackRelease.filename)
+    downloadTool
+      .mockRejectedValueOnce(
+        Object.assign(new Error('Download unavailable'), {
+          httpStatusCode: 404
+        })
+      )
+      .mockResolvedValueOnce(downloaded)
+
+    await expect(setupUnityCli(LATEST_CLI_VERSION, '')).resolves.toBe(
+      fallbackCliPath
+    )
+
+    expect(downloadTool).toHaveBeenNthCalledWith(
+      1,
+      getCliRelease(LATEST_CLI_VERSION, '', 'darwin', 'arm64').url
+    )
+    expect(downloadTool).toHaveBeenNthCalledWith(2, fallbackRelease.url)
+    expect(cacheFile).toHaveBeenCalledWith(
+      downloaded,
+      'unity',
+      'unity-cli',
+      LATEST_CLI_VERSION,
+      'darwin-x64'
+    )
+  })
+
+  it('Preserves the fallback download failure after the ARM latest download 404s', async () => {
+    Object.defineProperty(process, 'platform', { value: 'darwin' })
+    Object.defineProperty(process, 'arch', { value: 'arm64' })
+    downloadTool
+      .mockRejectedValueOnce(new Error('Unexpected HTTP response: 404'))
+      .mockRejectedValueOnce(new Error('Fallback unavailable'))
+
+    await expect(setupUnityCli(LATEST_CLI_VERSION, '')).rejects.toThrow(
+      'Fallback unavailable'
+    )
+    expect(downloadTool).toHaveBeenNthCalledWith(
+      1,
+      getCliRelease(LATEST_CLI_VERSION, '', 'darwin', 'arm64').url
+    )
+    expect(downloadTool).toHaveBeenNthCalledWith(
+      2,
+      getCliRelease(LATEST_CLI_VERSION, '', 'darwin', 'x64').url
+    )
+    expect(cacheFile).not.toHaveBeenCalled()
     expect(core.addPath).not.toHaveBeenCalled()
   })
 

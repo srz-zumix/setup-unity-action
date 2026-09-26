@@ -6,7 +6,12 @@ import { chmod } from 'node:fs/promises'
 import * as path from 'node:path'
 import { pipeline } from 'node:stream/promises'
 
-export const DEFAULT_CLI_VERSION = '1.0.0-beta.9'
+export const LATEST_CLI_VERSION = 'latest'
+
+/** CLI version whose binary checksums are pinned below. */
+export const PINNED_CLI_VERSION = '1.0.0-beta.9'
+
+export const DEFAULT_CLI_VERSION = PINNED_CLI_VERSION
 
 // Pinned binary checksums from Homebrew/homebrew-cask and ScoopInstaller/Versions.
 const checksums: Record<string, string> = {
@@ -38,17 +43,19 @@ export function getCliRelease(
   if (!Object.hasOwn(checksums, cacheArch)) {
     throw new Error(`Unsupported Unity CLI platform: ${platform}/${arch}`)
   }
-  if (!/^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/.test(version)) {
+  const isLatest = version === LATEST_CLI_VERSION
+  if (!isLatest && !/^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/.test(version)) {
     throw new Error(
-      'cli-version must be an exact version, such as 1.0.0-beta.9'
+      'cli-version must be latest or an exact version, such as 1.0.0-beta.9'
     )
   }
 
   const expected =
-    sha256 || (version === DEFAULT_CLI_VERSION ? checksums[cacheArch] : '')
-  if (!/^[0-9a-f]{64}$/i.test(expected)) {
+    sha256 || (version === PINNED_CLI_VERSION ? checksums[cacheArch] : '')
+  // The latest binary changes over time, so its checksum cannot be pinned.
+  if (expected === '' ? !isLatest : !/^[0-9a-f]{64}$/i.test(expected)) {
     throw new Error(
-      'cli-sha256 must be a SHA-256 hash and is required for a custom cli-version'
+      'cli-sha256 must be a SHA-256 hash; exact custom cli-version values require it, while latest may omit it'
     )
   }
   const extension = platform === 'win32' ? '.exe' : ''
@@ -58,6 +65,32 @@ export function getCliRelease(
     filename: `unity${extension}`,
     cacheArch
   }
+}
+
+type CliRelease = ReturnType<typeof getCliRelease>
+
+function isHttpNotFound(error: unknown): boolean {
+  if (typeof error !== 'object' || error === null) return false
+  if ('httpStatusCode' in error) return error.httpStatusCode === 404
+  if ('statusCode' in error) return error.statusCode === 404
+  return false
+}
+
+function getFallbackCliRelease(
+  version: string,
+  sha256: string,
+  platform: NodeJS.Platform = process.platform,
+  arch: string = process.arch
+): CliRelease | null {
+  if (
+    version === LATEST_CLI_VERSION &&
+    sha256 === '' &&
+    platform === 'darwin' &&
+    arch === 'arm64'
+  ) {
+    return getCliRelease(version, sha256, platform, 'x64')
+  }
+  return null
 }
 
 async function verifyChecksum(file: string, expected: string): Promise<void> {
@@ -75,24 +108,61 @@ export async function setupUnityCli(
   version: string,
   sha256: string
 ): Promise<string> {
-  const release = getCliRelease(version, sha256)
-  let directory = tc.find('unity-cli', version, release.cacheArch)
-  if (directory) {
-    await verifyChecksum(path.join(directory, release.filename), release.sha256)
-  } else {
-    core.info(`Downloading Unity CLI ${version} for ${release.cacheArch}`)
-    const downloaded = await tc.downloadTool(release.url)
-    await verifyChecksum(downloaded, release.sha256)
-    if (process.platform !== 'win32') await chmod(downloaded, 0o755)
-    directory = await tc.cacheFile(
-      downloaded,
-      release.filename,
-      'unity-cli',
-      version,
-      release.cacheArch
-    )
+  const primaryRelease = getCliRelease(version, sha256)
+  const releases: CliRelease[] = [primaryRelease]
+  const fallbackRelease = getFallbackCliRelease(version, sha256)
+  if (fallbackRelease) releases.push(fallbackRelease)
+  let fallbackAttempted = false
+  let lastError: unknown
+
+  for (const release of releases) {
+    try {
+      // Without a checksum, a cached latest binary cannot be verified as current.
+      let directory = release.sha256
+        ? tc.find('unity-cli', version, release.cacheArch)
+        : ''
+      if (directory) {
+        await verifyChecksum(
+          path.join(directory, release.filename),
+          release.sha256
+        )
+      } else {
+        core.info(`Downloading Unity CLI ${version} for ${release.cacheArch}`)
+        const downloaded = await tc.downloadTool(release.url)
+        if (release.sha256) await verifyChecksum(downloaded, release.sha256)
+        if (!release.filename.endsWith('.exe')) await chmod(downloaded, 0o755)
+        directory = await tc.cacheFile(
+          downloaded,
+          release.filename,
+          'unity-cli',
+          version,
+          release.cacheArch
+        )
+      }
+
+      core.addPath(directory)
+      return path.join(directory, release.filename)
+    } catch (error) {
+      const canFallback =
+        !fallbackAttempted &&
+        release === primaryRelease &&
+        (isHttpNotFound(error) ||
+          (error instanceof Error &&
+            /Unexpected HTTP response:\s*404\b/.test(error.message)))
+      if (canFallback) {
+        fallbackAttempted = true
+        lastError = error
+        core.info('Falling back to Unity CLI latest for darwin-x64')
+        continue
+      }
+      if (!fallbackAttempted) throw error
+      lastError = error
+      break
+    }
   }
 
-  core.addPath(directory)
-  return path.join(directory, release.filename)
+  if (lastError instanceof Error) throw lastError
+  throw new Error(
+    `Unable to resolve a Unity CLI download for this runner: ${String(lastError)}`
+  )
 }

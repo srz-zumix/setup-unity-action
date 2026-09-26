@@ -70,25 +70,25 @@ is required to avoid interactive version selection. All other inputs are
 optional. Boolean inputs accept YAML `true` / `false` spellings; quote them in
 workflows.
 
-| Input              | CLI argument / behavior                                                         | Default                               |
-| ------------------ | ------------------------------------------------------------------------------- | ------------------------------------- |
-| `version`          | Positional Editor version or selector, such as `6000.0.47f1`, `lts` or `latest` | Required                              |
-| `architecture`     | `--architecture`: `x86_64` or `arm64` for the Editor                            | CLI default                           |
-| `changeset`        | `--changeset`: archive changeset hash                                           | Unset                                 |
-| `module`           | Repeated `--module` arguments                                                   | Unset                                 |
-| `child-modules`    | `--child-modules`: include child modules                                        | `false`                               |
-| `no-child-modules` | `--no-child-modules`: exclude child modules                                     | `false`                               |
-| `force`            | `--force`: reinstall an existing Editor                                         | `false`                               |
-| `yes`              | `--yes`: select the first matching version without prompting                    | `true`                                |
-| `accept-eula`      | `--accept-eula`: accept module license agreements                               | `false`                               |
-| `dry-run`          | `--dry-run`: preview without installing                                         | `false`                               |
-| `resume`           | `--resume`: resume cached downloads                                             | `false`                               |
-| `no-elevate`       | `--no-elevate`: skip the Windows elevated install helper                        | `false`                               |
-| `list-modules`     | `--list-modules`: list modules and exit                                         | `false`                               |
-| `format`           | `--format`: `human`, `json`, `tsv`, `ndjson` or `github`                        | `human`                               |
-| `install-path`     | Set the Editor root with `unity install-path --set` before installing           | CLI default                           |
-| `cli-version`      | Exact CLI version to download                                                   | `1.0.0-beta.9`                        |
-| `cli-sha256`       | SHA-256 of the runner-specific CLI binary                                       | Built-in checksum for the default CLI |
+| Input              | CLI argument / behavior                                                         | Default                              |
+| ------------------ | ------------------------------------------------------------------------------- | ------------------------------------ |
+| `version`          | Positional Editor version or selector, such as `6000.0.47f1`, `lts` or `latest` | Required                             |
+| `architecture`     | `--architecture`: `x86_64` or `arm64` for the Editor                            | CLI default                          |
+| `changeset`        | `--changeset`: archive changeset hash                                           | Unset                                |
+| `module`           | Repeated `--module` arguments                                                   | Unset                                |
+| `child-modules`    | `--child-modules`: include child modules                                        | `false`                              |
+| `no-child-modules` | `--no-child-modules`: exclude child modules                                     | `false`                              |
+| `force`            | `--force`: reinstall an existing Editor                                         | `false`                              |
+| `yes`              | `--yes`: select the first matching version without prompting                    | `true`                               |
+| `accept-eula`      | `--accept-eula`: accept module license agreements                               | `false`                              |
+| `dry-run`          | `--dry-run`: preview without installing                                         | `false`                              |
+| `resume`           | `--resume`: resume cached downloads                                             | `false`                              |
+| `no-elevate`       | `--no-elevate`: skip the Windows elevated install helper                        | `false`                              |
+| `list-modules`     | `--list-modules`: list modules and exit                                         | `false`                              |
+| `format`           | `--format`: `human`, `json`, `tsv`, `ndjson` or `github`                        | `human`                              |
+| `install-path`     | Set the Editor root with `unity install-path --set` before installing           | CLI default                          |
+| `cli-version`      | CLI version to download (`latest` or an exact version)                          | `1.0.0-beta.9`                       |
+| `cli-sha256`       | SHA-256 of the runner-specific CLI binary                                       | Built-in checksum for `1.0.0-beta.9` |
 
 - The action always adds `--non-interactive` and `--no-banner`. With
   `yes: 'false'`, commands requiring a choice may fail rather than prompt.
@@ -118,8 +118,9 @@ list modes.
 CLI downloads support x64 and ARM64 on macOS, Windows and Linux. The CLI binary
 is selected automatically for the **runner's** OS and architecture; the
 `architecture` input instead controls the **Editor** architecture (`x86_64`, not
-`x64`). An ARM64 CLI does not imply that every Editor release or module supports
-ARM64 on that OS.
+`x64`). On macOS ARM64 runners, the action falls back to the latest x64 CLI if
+Unity does not publish a latest ARM64 binary. An ARM64 CLI does not imply that
+every Editor release or module supports ARM64 on that OS.
 
 Use a runner compatible with Node.js 24 actions. Self-hosted runners also need
 the OS dependencies, disk space and installation permissions required by Unity.
@@ -144,9 +145,13 @@ The default CLI checksums are pinned from the
 [Homebrew manifest](https://github.com/Homebrew/homebrew-cask/blob/c9c6ce69ce87cfa22290d2a0351f0f76894037a3/Casks/u/unity-cli.rb)
 and
 [Scoop manifest](https://github.com/ScoopInstaller/Versions/blob/2bcdda3b7cb2d800949781b8c0e0bdfa5315e9d3/bucket/unity-cli-beta.json).
-Overriding `cli-version` requires an explicit trusted `cli-sha256` for each
-runner platform; `cli-sha256` is mandatory whenever `cli-version` is changed.
-Custom CLI versions must support the options you select.
+They apply to the default `cli-version: 1.0.0-beta.9`. Setting
+`cli-version: latest` always downloads the newest CLI, so its binary cannot be
+checksum-pinned or reused from the tool cache; set `cli-version` and
+`cli-sha256` to an exact version and trusted hash for each runner platform when
+reproducibility or checksum verification is required. Any other custom
+`cli-version` also requires `cli-sha256`. Custom CLI versions must support the
+options you select.
 
 The command mapping follows Unity's
 [official CLI reference](https://github.com/Unity-Technologies/skills/blob/645158263ad5f93296ca54444db8f2ec5dbf8c4d/skills/unity-cli/references/editors-install.md).

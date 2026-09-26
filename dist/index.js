@@ -33401,7 +33401,10 @@ function _getGlobal(key, defaultValue) {
     return value !== undefined ? value : defaultValue;
 }
 
-const DEFAULT_CLI_VERSION = '1.0.0-beta.9';
+const LATEST_CLI_VERSION = 'latest';
+/** CLI version whose binary checksums are pinned below. */
+const PINNED_CLI_VERSION = '1.0.0-beta.9';
+const DEFAULT_CLI_VERSION = PINNED_CLI_VERSION;
 // Pinned binary checksums from Homebrew/homebrew-cask and ScoopInstaller/Versions.
 const checksums = {
     'darwin-arm64': '459d6830a411df86e9db0579b803932f0c6bc2eff6a7ab483385f1676fdab21f',
@@ -33420,12 +33423,14 @@ function getCliRelease(version, sha256, platform = process.platform, arch = proc
     if (!Object.hasOwn(checksums, cacheArch)) {
         throw new Error(`Unsupported Unity CLI platform: ${platform}/${arch}`);
     }
-    if (!/^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/.test(version)) {
-        throw new Error('cli-version must be an exact version, such as 1.0.0-beta.9');
+    const isLatest = version === LATEST_CLI_VERSION;
+    if (!isLatest && !/^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/.test(version)) {
+        throw new Error('cli-version must be latest or an exact version, such as 1.0.0-beta.9');
     }
-    const expected = sha256 || (version === DEFAULT_CLI_VERSION ? checksums[cacheArch] : '');
-    if (!/^[0-9a-f]{64}$/i.test(expected)) {
-        throw new Error('cli-sha256 must be a SHA-256 hash and is required for a custom cli-version');
+    const expected = sha256 || (version === PINNED_CLI_VERSION ? checksums[cacheArch] : '');
+    // The latest binary changes over time, so its checksum cannot be pinned.
+    if (expected === '' ? !isLatest : !/^[0-9a-f]{64}$/i.test(expected)) {
+        throw new Error('cli-sha256 must be a SHA-256 hash; exact custom cli-version values require it, while latest may omit it');
     }
     const extension = platform === 'win32' ? '.exe' : '';
     return {
@@ -33434,6 +33439,24 @@ function getCliRelease(version, sha256, platform = process.platform, arch = proc
         filename: `unity${extension}`,
         cacheArch
     };
+}
+function isHttpNotFound(error) {
+    if (typeof error !== 'object' || error === null)
+        return false;
+    if ('httpStatusCode' in error)
+        return error.httpStatusCode === 404;
+    if ('statusCode' in error)
+        return error.statusCode === 404;
+    return false;
+}
+function getFallbackCliRelease(version, sha256, platform = process.platform, arch = process.arch) {
+    if (version === LATEST_CLI_VERSION &&
+        sha256 === '' &&
+        platform === 'darwin' &&
+        arch === 'arm64') {
+        return getCliRelease(version, sha256, platform, 'x64');
+    }
+    return null;
 }
 async function verifyChecksum(file, expected) {
     const hash = createHash('sha256');
@@ -33446,21 +33469,55 @@ async function verifyChecksum(file, expected) {
  * Download, verify and cache Unity CLI, and make it available to later steps.
  */
 async function setupUnityCli(version, sha256) {
-    const release = getCliRelease(version, sha256);
-    let directory = find('unity-cli', version, release.cacheArch);
-    if (directory) {
-        await verifyChecksum(path$1.join(directory, release.filename), release.sha256);
+    const primaryRelease = getCliRelease(version, sha256);
+    const releases = [primaryRelease];
+    const fallbackRelease = getFallbackCliRelease(version, sha256);
+    if (fallbackRelease)
+        releases.push(fallbackRelease);
+    let fallbackAttempted = false;
+    let lastError;
+    for (const release of releases) {
+        try {
+            // Without a checksum, a cached latest binary cannot be verified as current.
+            let directory = release.sha256
+                ? find('unity-cli', version, release.cacheArch)
+                : '';
+            if (directory) {
+                await verifyChecksum(path$1.join(directory, release.filename), release.sha256);
+            }
+            else {
+                info(`Downloading Unity CLI ${version} for ${release.cacheArch}`);
+                const downloaded = await downloadTool(release.url);
+                if (release.sha256)
+                    await verifyChecksum(downloaded, release.sha256);
+                if (!release.filename.endsWith('.exe'))
+                    await chmod$1(downloaded, 0o755);
+                directory = await cacheFile(downloaded, release.filename, 'unity-cli', version, release.cacheArch);
+            }
+            addPath(directory);
+            return path$1.join(directory, release.filename);
+        }
+        catch (error) {
+            const canFallback = !fallbackAttempted &&
+                release === primaryRelease &&
+                (isHttpNotFound(error) ||
+                    (error instanceof Error &&
+                        /Unexpected HTTP response:\s*404\b/.test(error.message)));
+            if (canFallback) {
+                fallbackAttempted = true;
+                lastError = error;
+                info('Falling back to Unity CLI latest for darwin-x64');
+                continue;
+            }
+            if (!fallbackAttempted)
+                throw error;
+            lastError = error;
+            break;
+        }
     }
-    else {
-        info(`Downloading Unity CLI ${version} for ${release.cacheArch}`);
-        const downloaded = await downloadTool(release.url);
-        await verifyChecksum(downloaded, release.sha256);
-        if (process.platform !== 'win32')
-            await chmod$1(downloaded, 0o755);
-        directory = await cacheFile(downloaded, release.filename, 'unity-cli', version, release.cacheArch);
-    }
-    addPath(directory);
-    return path$1.join(directory, release.filename);
+    if (lastError instanceof Error)
+        throw lastError;
+    throw new Error(`Unable to resolve a Unity CLI download for this runner: ${String(lastError)}`);
 }
 
 /**
