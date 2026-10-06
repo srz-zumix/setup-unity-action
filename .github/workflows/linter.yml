@@ -40,7 +40,7 @@ jobs:
 
       - name: Install Dependencies
         id: install
-        run: npm ci
+        run: npm ci --ignore-scripts
 
       - name: Lint Codebase
         id: super-linter
